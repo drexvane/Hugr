@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dtp"
+version = "0.1.0"
+description = "Data-to-Insights Platform: messy data to clean data to dashboard to AI query agent"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=3.0",
+    "numpy>=2.0",
+    "pyarrow>=18",
+    "openpyxl>=3.1",
+    "PyYAML>=6.0",
+    "python-dateutil>=2.9",
+    "scipy>=1.14",
+    "duckdb>=1.1",
+]
+
+[project.optional-dependencies]
+dashboard = ["plotly>=6.0", "streamlit>=1.4", "Jinja2>=3.1"]
+agent = ["anthropic>=1.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+dtp = "dtp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

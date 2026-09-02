@@ -1,0 +1,25 @@
+# Pins match what is actually installed in this environment (Python 3.12).
+# NOTE: pandas 3.x is in use — Copy-on-Write is the default and the default
+# string dtype is Arrow-backed `str`, not `object`. Code in src/dtp is written
+# for 3.x; do not assume 2.x semantics.
+
+# --- Phase 1: data pipeline ---
+pandas==3.0.2
+numpy==2.4.4
+pyarrow==24.0.0            # Parquet read/write for versioned snapshots
+openpyxl==3.1.5            # .xlsx source files
+PyYAML==6.0.3              # declarative pipeline + validation config
+python-dateutil==2.9.0.post0
+scipy==1.17.1              # distribution / outlier stats in profiling
+
+# --- Phase 2: dashboard ---
+duckdb==1.1.3              # analytical SQL layer over clean Parquet
+plotly==6.7.0
+streamlit==1.57.0
+Jinja2==3.1.6              # narrative annotation templates
+
+# --- Phase 3: AI query agent ---
+anthropic==1.3.0
+
+# --- tooling ---
+pytest==8.3.4
