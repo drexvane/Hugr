@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.key
+credentials.json
+
+# Data: raw + intermediate are reproducible from source, keep them out of git.
+data/raw/*
+data/interim/*
+data/clean/*
+data/versions/*
+!data/**/.gitkeep
+
+# Generated reports
+reports/profiling/*
+reports/schema/*
+!reports/**/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-*
+.vs/
+.claude/
+
+# Jupyter
+*.ipynb_checkpoints/
+.jupyter/
+
+# Distribution / packaging
+dist/
+build/
+*.egg
+.eggs/
+
+# Testing
+.coverage
+.tox/
+htmlcov/
+*.cover
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Synthetic test fixture (regenerate with scripts/make_synthetic_messy.py)
+data/_synthetic/
+
+# Generated risk register (regenerate with: python -m dtp.cli audit)
+reports/risk-summary.md
+reports/risk-summary.json
+
+# Large dataset files - can be re-downloaded
+dataset/*.csv
+!dataset/.gitkeep
