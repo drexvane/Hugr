@@ -1,0 +1,40 @@
+{
+  "checked_at": "2026-09-03T00:57:42",
+  "verdict": "OK - nothing to report",
+  "ok": true,
+  "counts": {
+    "critical": 0,
+    "warning": 0,
+    "info": 3
+  },
+  "thresholds": {
+    "row_growth_pct": 25.0,
+    "row_shrink_pct": 0.0,
+    "new_null_columns": 0,
+    "allow_schema_change": false,
+    "max_rejects": 0
+  },
+  "alerts": [
+    {
+      "id": "drift:access_logs",
+      "severity": "info",
+      "source": "drift",
+      "title": "access_logs: unchanged since 20260903T005455",
+      "detail": "content hash identical"
+    },
+    {
+      "id": "drift:order_items",
+      "severity": "info",
+      "source": "drift",
+      "title": "order_items: unchanged since 20260903T005455",
+      "detail": "content hash identical"
+    },
+    {
+      "id": "source:skipped:DescriptionDataCoSupplyChain.csv",
+      "severity": "info",
+      "source": "cleaning",
+      "title": "Source skipped by config: DescriptionDataCoSupplyChain.csv",
+      "detail": "The vendor's own field glossary (52 of the 53 fact columns). Not a table: it is consumed by dtp.dictionary as the business description of each field."
+    }
+  ]
+}

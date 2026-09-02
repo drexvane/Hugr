@@ -24,6 +24,7 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,7 @@ DATE_FORMATS: list[tuple[str, str]] = [
     ("%Y-%m-%dT%H:%M:%S", "ISO datetime"),
     ("%Y-%m-%d %H:%M:%S", "ISO datetime (space)"),
     ("%Y-%m-%dT%H:%M:%S.%f", "ISO datetime (micro)"),
+    ("%Y-%m-%d %H:%M", "ISO datetime (no seconds)"),
     ("%Y/%m/%d", "Y/M/D"),
     ("%Y%m%d", "YYYYMMDD"),
     ("%d-%b-%Y", "D-Mon-Y"),
@@ -61,12 +63,22 @@ DATE_FORMATS: list[tuple[str, str]] = [
     ("%d.%m.%Y", "D.M.Y (dotted)"),
     ("%m/%d/%Y", "M/D/Y (US)"),
     ("%d/%m/%Y", "D/M/Y (EU)"),
+    ("%m/%d/%Y %H:%M", "M/D/Y HH:MM (US)"),
+    ("%d/%m/%Y %H:%M", "D/M/Y HH:MM (EU)"),
+    ("%m/%d/%Y %H:%M:%S", "M/D/Y HH:MM:SS (US)"),
+    ("%d/%m/%Y %H:%M:%S", "D/M/Y HH:MM:SS (EU)"),
     ("%m/%d/%y", "M/D/YY (US, 2-digit year)"),
     ("%d/%m/%y", "D/M/YY (EU, 2-digit year)"),
     ("%m-%d-%Y", "M-D-Y"),
     ("%d-%m-%Y", "D-M-Y"),
     ("%Y-%m", "year-month"),
 ]
+
+# Literal separators appearing in DATE_FORMATS. Every entry above contains at
+# least one of these, except %Y%m%d which is exactly eight digits - so a value
+# holding none of them and not being 8 digits cannot be a date. strptime is
+# strict about literals, which is what makes the shortcut safe.
+_DATE_HINT_CHARS = frozenset("-/. ")
 
 RE_INT = re.compile(r"^[+-]?\d+$")
 RE_INT_GROUPED = re.compile(r"^[+-]?\d{1,3}(?:,\d{3})+$")
@@ -130,11 +142,25 @@ def to_number(value: str) -> float | None:
     return -num if negative else num
 
 
-def matching_date_formats(value: str) -> list[str]:
+# Per-value classification is pure, and real columns repeat their values far
+# more often than not (193 distinct prices across 180k rows). Memoising turns
+# "once per cell" into "once per distinct value" - on the supply-chain dataset
+# that is the difference between ~20 minutes and well under one.
+_VALUE_CACHE = 1 << 17
+
+
+@lru_cache(maxsize=_VALUE_CACHE)
+def matching_date_formats(value: str) -> tuple[str, ...]:
     """Every format in DATE_FORMATS that parses this value exactly."""
     v = value.strip()
     if not v or len(v) > 40:
-        return []
+        return ()
+    # Every entry in DATE_FORMATS needs a separator from this set, except
+    # %Y%m%d which is exactly 8 digits. Anything else cannot be a date, so
+    # skip 19 strptime attempts per numeric cell.
+    if not (_DATE_HINT_CHARS & set(v)):
+        if not (len(v) == 8 and v.isdigit()):
+            return ()
     hits = []
     for fmt, _label in DATE_FORMATS:
         try:
@@ -142,9 +168,10 @@ def matching_date_formats(value: str) -> list[str]:
         except (ValueError, TypeError):
             continue
         hits.append(fmt)
-    return hits
+    return tuple(hits)
 
 
+@lru_cache(maxsize=_VALUE_CACHE)
 def classify_value(value: str) -> str:
     """Single best type tag for one raw text value."""
     v = value.strip()
@@ -313,7 +340,20 @@ def profile_column(name: str, values: list[str], n_rows: int) -> ColumnProfile:
 
 
 FMT_LABEL: dict[str, str] = dict(DATE_FORMATS)
-_US, _EU = "%m/%d/%Y", "%d/%m/%Y"
+
+# Formats that differ *only* in whether the day or the month comes first. Any
+# value matching one side and not the other proves that side's order; a value
+# matching both proves nothing. Checked as sets so the datetime variants
+# ("1/31/2018 22:56") are covered, not just the bare dates.
+_DMY_PAIRS = [
+    ("%m/%d/%Y", "%d/%m/%Y"),
+    ("%m/%d/%Y %H:%M", "%d/%m/%Y %H:%M"),
+    ("%m/%d/%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S"),
+    ("%m/%d/%y", "%d/%m/%y"),
+    ("%m-%d-%Y", "%d-%m-%Y"),
+]
+_US_FMTS = frozenset(us for us, _ in _DMY_PAIRS)
+_EU_FMTS = frozenset(eu for _, eu in _DMY_PAIRS)
 
 
 def _analyse_dates(p: ColumnProfile, present: list[str]) -> None:
@@ -328,20 +368,32 @@ def _analyse_dates(p: ColumnProfile, present: list[str]) -> None:
 
     us_only = eu_only = both = 0
     for hits in match_sets.values():
-        if _US in hits and _EU in hits:
+        has_us, has_eu = bool(hits & _US_FMTS), bool(hits & _EU_FMTS)
+        if has_us and has_eu:
             both += 1
-        elif _US in hits:
+        elif has_us:
             us_only += 1
-        elif _EU in hits:
+        elif has_eu:
             eu_only += 1
+
+    # A column is resolved when some value can only be read one way: "1/31" is
+    # proof the whole column is M/D/Y. The individually-ambiguous values then
+    # belong to that same format rather than to a second one.
+    resolved: frozenset[str] | None = None
+    if us_only and not eu_only:
+        resolved = _US_FMTS
+    elif eu_only and not us_only:
+        resolved = _EU_FMTS
 
     tally: Counter[str] = Counter()
     for v, hits in match_sets.items():
-        if _US in hits and _EU in hits:
-            tally["D/M/Y or M/D/Y (ambiguous)"] += 1
-        else:
-            first = next(f for f, _ in DATE_FORMATS if f in hits)
-            tally[FMT_LABEL[first]] += 1
+        if hits & _US_FMTS and hits & _EU_FMTS:
+            if resolved is None:
+                tally["D/M/Y or M/D/Y (ambiguous)"] += 1
+                continue
+            hits = hits & resolved
+        first = next(f for f, _ in DATE_FORMATS if f in hits)
+        tally[FMT_LABEL[first]] += 1
     p.date_formats = dict(tally.most_common())
 
     if us_only and eu_only:

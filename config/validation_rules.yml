@@ -1,0 +1,432 @@
+# Validation rules - Phase 1.2
+#
+# These run against the CLEAN tables, after config/cleaning_rules.yml has done
+# its work, and they are the tripwire for everything cleaning is supposed to have
+# guaranteed. `src/dtp/validate.py` is the engine; this file is the contract.
+#
+# Severity is the whole design:
+#
+#   error  The data is logically impossible, or an invariant this project relies
+#          on has broken. Fails the pipeline. Every error rule below currently
+#          passes with 0 violations on the real data - so a failure means the
+#          source changed, not that the rule is aspirational.
+#   warn   Reported, does not fail. Two kinds: envelope checks ("no quantity
+#          above 5 has ever been seen") where a new value is news rather than a
+#          defect, and known-and-accepted gaps that are documented facts.
+#
+# A rule with `expect_violations` is asserting an exact known count. If the count
+# changes in either direction the rule fails, which is how a documented defect
+# stops being able to quietly grow.
+#
+# Calibrated 2026-09-02 against 180,519 order lines and 466,728 access-log rows.
+
+version: 1
+
+tables:
+
+  # ===========================================================================
+  order_items:
+    min_rows: 1
+    no_duplicate_rows: true      # measured 0 after cleaning; roadmap exit gate
+
+    rules:
+
+      # --- required fields -------------------------------------------------
+      - id: keys_present
+        type: not_null
+        columns: [order_item_id, order_id, customer_id, product_id,
+                  category_id, department_id]
+        severity: error
+        reason: "A null key cannot be joined, counted or de-duplicated."
+
+      - id: core_measures_present
+        type: not_null
+        columns: [order_date, shipping_date, order_status, delivery_status,
+                  order_item_quantity, order_item_sales, order_item_discount,
+                  order_item_total, order_item_profit, product_price]
+        severity: error
+        reason: >
+          Every metric in the dashboard is one of these or derived from them. A
+          null here silently shrinks a SUM instead of failing.
+
+      - id: known_sparse_fields
+        type: not_null
+        columns: [customer_last_name, customer_city, order_zipcode]
+        severity: warn
+        expect_violations: 155690
+        reason: >
+          8 blank surnames + 3 cities nulled by the geo repair + 155,679 rows
+          where order_zipcode is legitimately not applicable (non-US orders).
+          Asserted as an exact total so the sparsity cannot grow unnoticed.
+
+      # --- uniqueness ------------------------------------------------------
+      - id: order_item_id_unique
+        type: unique
+        columns: [order_item_id]
+        severity: error
+        reason: "The grain of the table. If this breaks, every SUM double-counts."
+
+      # --- ranges: logically impossible ------------------------------------
+      - id: latitude_in_range
+        type: range
+        column: store_latitude
+        min: -90
+        max: 90
+        severity: error
+        reason: "Outside this the value is not a latitude."
+
+      - id: longitude_in_range
+        type: range
+        column: store_longitude
+        min: -180
+        max: 180
+        severity: error
+
+      - id: quantities_positive
+        type: range
+        column: order_item_quantity
+        min: 1
+        severity: error
+        reason: "A line item for zero or fewer units is not a line item."
+
+      - id: money_non_negative
+        type: range
+        columns: [order_item_sales, order_item_discount, order_item_total,
+                  product_price]
+        min: 0
+        severity: error
+        reason: >
+          Profit is deliberately excluded: it reaches -$4,274.98 legitimately.
+          Sales, discount and total cannot be negative under any reading.
+
+      - id: shipping_days_non_negative
+        type: range
+        columns: [days_shipping_real, days_shipping_scheduled]
+        min: 0
+        severity: error
+
+      - id: discount_not_above_sales
+        type: expression
+        expr: "order_item_discount <= order_item_sales"
+        severity: error
+        reason: "A discount larger than the sale would make order_item_total negative."
+
+      # --- ranges: observed envelope (news, not defects) -------------------
+      - id: quantity_envelope
+        type: range
+        column: order_item_quantity
+        max: 5
+        severity: warn
+        reason: "Max observed is 5. A 6 is a real change in ordering behaviour, not bad data."
+
+      - id: shipping_days_envelope
+        type: range
+        column: days_shipping_real
+        max: 6
+        severity: warn
+        reason: "Max observed is 6 days. Worth knowing if that ceiling moves."
+
+      - id: discount_rate_envelope
+        type: range
+        column: order_item_discount_rate
+        min: 0
+        max: 0.2505
+        severity: warn
+        reason: >
+          The pricing ceiling is 25%, and 6,723 rows land just above it - up to
+          0.250433 - because the exact recomputed rate replaces a value the source
+          had rounded to 2dp. 0.2505 is the ceiling plus that rounding, so the rule
+          catches a policy change without firing on arithmetic.
+
+      # --- vocabularies ----------------------------------------------------
+      - id: order_status_vocabulary
+        type: allowed_values
+        column: order_status
+        values: [COMPLETE, PENDING, CLOSED, PENDING_PAYMENT, CANCELED,
+                 PROCESSING, SUSPECTED_FRAUD, ON_HOLD, PAYMENT_REVIEW]
+        severity: error
+        reason: >
+          Taken from the vendor's own glossary, not from the data. A tenth status
+          would silently escape the is_revenue_recognised filter, which is exactly
+          the failure that filter exists to prevent.
+
+      - id: delivery_status_vocabulary
+        type: allowed_values
+        column: delivery_status
+        values: ["Advance shipping", "Late delivery", "Shipping canceled",
+                 "Shipping on time"]
+        severity: error
+
+      - id: payment_type_vocabulary
+        type: allowed_values
+        column: payment_type
+        values: [CASH, DEBIT, PAYMENT, TRANSFER]
+        severity: error
+
+      - id: shipping_mode_vocabulary
+        type: allowed_values
+        column: shipping_mode
+        values: ["Standard Class", "First Class", "Second Class", "Same Day"]
+        severity: error
+
+      - id: customer_segment_vocabulary
+        type: allowed_values
+        column: customer_segment
+        values: [Consumer, Corporate, "Home Office"]
+        severity: error
+
+      - id: market_vocabulary
+        type: allowed_values
+        column: market
+        values: [Africa, Europe, LATAM, "Pacific Asia", USCA]
+        severity: error
+
+      - id: customer_country_vocabulary
+        type: allowed_values
+        column: customer_country
+        values: ["Estados Unidos", "Puerto Rico"]
+        severity: warn
+        reason: >
+          Only two values exist and both are already normalised by the value map.
+          A third means the map needs an entry, so this is news rather than an error.
+
+      # --- formats ---------------------------------------------------------
+      - id: zipcode_shape
+        type: regex
+        column: customer_zipcode
+        pattern: "^[0-9]{5}$"
+        severity: error
+        reason: >
+          Exactly 5 digits, which is what a US zipcode is. This rule is the reason
+          the zero_pad transform exists: it failed on 69,373 Puerto Rico rows and
+          6,135 New England rows whose leading zeros had been destroyed upstream,
+          and it now asserts the reconstruction holds for every row.
+
+      - id: order_zipcode_shape
+        type: regex
+        column: order_zipcode
+        pattern: "^[0-9]{5}$"
+        severity: error
+        reason: "Same check on the 24,840 US destination zipcodes; nulls are exempt."
+
+      - id: product_image_is_url
+        type: regex
+        column: product_image_url
+        pattern: "^https?://\\S+$"
+        severity: warn
+
+      # --- arithmetic identities (tolerances measured, not guessed) --------
+      - id: sales_equals_price_times_quantity
+        type: identity
+        lhs: "order_item_sales"
+        rhs: "product_price * order_item_quantity"
+        tol_abs: 0.005
+        severity: error
+        reason: >
+          Holds exactly on the clean data (max residual 0.000000 after rounding
+          money to cents). Tolerance is half a cent, i.e. the rounding itself.
+
+      - id: total_equals_sales_minus_discount
+        type: identity
+        lhs: "order_item_total"
+        rhs: "order_item_sales - order_item_discount"
+        tol_abs: 0.011
+        severity: error
+        reason: >
+          Max residual 0.010000 across 180,519 rows - the source was written as
+          float32, so a full cent of drift is the floor, not a defect. A tighter
+          tolerance would fail on clean data; a looser one would hide a real break.
+
+      - id: discount_rate_recomputation
+        type: identity
+        lhs: "order_item_discount"
+        rhs: "order_item_sales * order_item_discount_rate"
+        tol_abs: 0.0015
+        severity: error
+        reason: >
+          Proves the replacement of the source's 2dp rate actually worked: max
+          residual 0.001000, against 9.999 for the column that was dropped.
+
+      - id: profit_ratio_recomputation
+        type: identity
+        lhs: "order_item_profit"
+        rhs: "order_item_total * order_item_profit_ratio"
+        tol_abs: 0.001
+        severity: error
+        reason: >
+          Same proof for profit ratio: max residual 0.000820, against 9.299 for
+          the dropped source column.
+
+      - id: shipping_delay_recomputation
+        type: identity
+        lhs: "shipping_delay_days"
+        rhs: "days_shipping_real - days_shipping_scheduled"
+        tol_abs: 0
+        severity: error
+
+      # --- cross-field logic ----------------------------------------------
+      - id: shipping_after_order
+        type: expression
+        expr: "shipping_date >= order_date"
+        severity: error
+        reason: "0 violations measured. A shipment before its order is impossible."
+
+      - id: late_risk_matches_delivery_status
+        type: expression
+        expr: "late_delivery_risk == (delivery_status == 'Late delivery')"
+        severity: error
+        reason: >
+          Exact equivalence on all 180,519 rows: late_delivery_risk is a restated
+          delivery_status, not an independent prediction. Recorded as a rule
+          because a dashboard that treats it as a model output would be wrong, and
+          this is the assertion that keeps that reading available.
+
+      - id: cancelled_shipments_flagged
+        type: expression
+        expr: "is_shipment_valid == (delivery_status != 'Shipping canceled')"
+        severity: error
+
+      - id: revenue_flag_matches_status
+        type: expression
+        expr: "is_revenue_recognised == (order_status not in ['CANCELED', 'SUSPECTED_FRAUD'])"
+        severity: error
+        reason: "The single most load-bearing derived column; assert it directly."
+
+      - id: cancelled_rows_still_carry_sales
+        type: expression
+        expr: "is_revenue_recognised or order_item_sales == 0"
+        severity: warn
+        expect_violations: 7754
+        reason: >
+          NOT a defect to fix - a defect to remember. All 7,754 non-completed rows
+          carry full sales values ($1,570,305.36). The rule exists so the number
+          appears in every validation report rather than being rediscovered.
+
+      # --- referential integrity / functional dependencies -----------------
+      - id: category_id_determines_name
+        type: consistency
+        determinant: category_id
+        dependent: category_name
+        severity: error
+        reason: >
+          The Electronics disambiguation depends on this holding: one id, one
+          label. 0 violations. The reverse does NOT hold and is not asserted -
+          two ids share the raw label, which is the whole reason for the value map.
+
+      - id: category_id_determines_department
+        type: consistency
+        determinant: category_id
+        dependent: department_id
+        severity: error
+
+      - id: department_id_determines_name
+        type: consistency
+        determinant: department_id
+        dependent: department_name
+        severity: error
+
+      - id: product_id_determines_name
+        type: consistency
+        determinant: product_id
+        dependent: product_name
+        severity: error
+
+      - id: product_id_determines_price
+        type: consistency
+        determinant: product_id
+        dependent: product_price
+        severity: error
+        reason: "0 violations: there is no price history in this data, only a price."
+
+      - id: order_id_determines_header
+        type: consistency
+        determinant: order_id
+        dependent: [order_date, customer_id, order_status, market, order_country,
+                    shipping_mode, delivery_status, order_region, shipping_date,
+                    days_shipping_real]
+        severity: error
+        reason: >
+          Order-level attributes repeated on every line item. All stable, which is
+          what makes a star schema safe to build in Phase 2. If one drifts, the
+          order header must become its own table instead.
+
+      - id: customer_id_determines_attributes
+        type: consistency
+        determinant: customer_id
+        dependent: [customer_first_name, customer_last_name, customer_segment,
+                    customer_city, customer_state, customer_country,
+                    customer_zipcode, customer_street]
+        severity: error
+        reason: "0 violations: the customer dimension is internally consistent."
+
+  # ===========================================================================
+  access_logs:
+    min_rows: 1
+    no_duplicate_rows: true
+    reason: >
+      The exit criterion for de-duplication. 3,249 exact duplicates existed in the
+      raw file; this asserts the cleaning step removed all of them.
+
+    rules:
+      - id: log_keys_present
+        type: not_null
+        columns: [access_log_id, viewed_at, product_name, category_name,
+                  department_name, client_ip, request_url]
+        severity: error
+
+      - id: log_id_unique
+        type: unique
+        columns: [access_log_id]
+        severity: error
+
+      - id: client_ip_shape
+        type: regex
+        column: client_ip
+        pattern: "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"
+        severity: error
+        reason: "IPv4 only in this file. IPv6 arriving is a genuine schema change."
+
+      - id: request_url_shape
+        type: regex
+        column: request_url
+        pattern: "^/department/.+/category/.+/product/.+$"
+        severity: warn
+        reason: >
+          Every URL is a product page under this three-level path, which is what
+          makes the log joinable at all. A different shape means new page types.
+
+      - id: department_in_fact_table
+        type: referential
+        column: department_name
+        references: order_items.department_name
+        casefold: true
+        severity: error
+        reason: >
+          All 6 log departments exist in the fact table's 11 once case is folded.
+          A department with traffic but no catalogue entry would be a broken join.
+
+      - id: category_in_fact_table
+        type: referential
+        column: category_name
+        references: order_items.category_name
+        casefold: true
+        severity: warn
+        expect_violations: 3
+        reason: >
+          Exactly 3 by design. 'featured shops' and 'indoor outdoor games' have
+          page views and no sales - a real funnel finding, not a defect.
+          'electronics' cannot match because the fact table splits it into
+          'Electronics (Footwear)' and 'Electronics (Outdoors)'; join that one on
+          category_id.
+
+      - id: product_in_fact_table
+        type: referential
+        column: product_name
+        references: order_items.product_name
+        casefold: true
+        severity: warn
+        expect_violations: 4
+        reason: >
+          4 of 76 viewed products were never ordered, and 46 of the catalogue's
+          118 products were never viewed. Both are findings for Phase 2, not
+          errors: the log covers Sep 2017 - Jan 2018 while orders span 2015-2018.

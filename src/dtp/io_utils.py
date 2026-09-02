@@ -100,8 +100,15 @@ def _finalise(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return df, warnings
 
 
-def load_delimited(path: Path) -> list[LoadedTable]:
-    encoding, warns = detect_encoding(path)
+def load_delimited(path: Path, encoding: str | None = None) -> list[LoadedTable]:
+    # `encoding` overrides detection. Phase 1.2 pins it from config: this file is
+    # cp1252 Spanish and detection only happens to agree, which is not a
+    # guarantee worth relying on once the bytes are being trusted rather than
+    # merely measured.
+    if encoding:
+        warns = ["encoding pinned to " + encoding + " by caller"]
+    else:
+        encoding, warns = detect_encoding(path)
     delimiter, dwarns = sniff_delimiter(path, encoding)
     warns = warns + dwarns
     df = pd.read_csv(
@@ -201,10 +208,10 @@ def load_parquet(path: Path) -> list[LoadedTable]:
     ]
 
 
-def load_file(path: Path) -> list[LoadedTable]:
+def load_file(path: Path, encoding: str | None = None) -> list[LoadedTable]:
     suffix = path.suffix.lower()
     if suffix in TEXTUAL_SUFFIXES:
-        return load_delimited(path)
+        return load_delimited(path, encoding=encoding)
     if suffix in EXCEL_SUFFIXES:
         return load_excel(path)
     if suffix in JSON_SUFFIXES:

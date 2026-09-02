@@ -1,0 +1,240 @@
+{
+  "generated_at": "2026-09-03T01:10:30",
+  "problems": [
+    "DescriptionDataCoSupplyChain.csv: no entry in cleaning_rules.yml, so not cleaned",
+    "readme.csv: skipped by config - Not a table, listed so it is not silently ignored."
+  ],
+  "tables": [
+    {
+      "source": "mini",
+      "table": "mini",
+      "rows_in": 7,
+      "rows_out": 7,
+      "cols_in": 12,
+      "cols_out": 13,
+      "rejected_cells": 1,
+      "warnings": [],
+      "counts_by_step": {
+        "trim_whitespace": 2,
+        "sentinel_null": 2,
+        "collapse_spaces": 1,
+        "row_fix:geo_shift": 1,
+        "value_map": 2,
+        "drop_column": 1,
+        "deduplicate": 0,
+        "type": 75,
+        "reject_cell": 1,
+        "transform:zero_pad": 1,
+        "nulls:keep_null": 2,
+        "derived": 12,
+        "derived:guard": 2
+      },
+      "dtypes": {
+        "row_id": "Int64",
+        "order_ref": "string",
+        "ordered_on": "datetime64[ns]",
+        "qty": "Int64",
+        "unit_price": "Float64",
+        "line_total": "Float64",
+        "discount": "Float64",
+        "zip_code": "string",
+        "city": "string",
+        "region": "category",
+        "status": "category",
+        "discount_rate": "Float64",
+        "is_revenue": "boolean"
+      },
+      "actions": [
+        {
+          "step": "trim_whitespace",
+          "target": "Ordered On",
+          "detail": "stripped leading/trailing",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "sentinel_null",
+          "target": "Zip",
+          "detail": "recognised as missing",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "collapse_spaces",
+          "target": "City",
+          "detail": "collapsed internal runs",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Region",
+          "detail": "stripped leading/trailing",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "sentinel_null",
+          "target": "Notes",
+          "detail": "recognised as missing",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "row_fix:geo_shift",
+          "target": "City, Region, Zip",
+          "detail": "shift_right where Zip is blank and Region matches ^[0-9]{5}$",
+          "n": 1,
+          "reason": "One row has its geo fields shifted one column left."
+        },
+        {
+          "step": "value_map",
+          "target": "Region",
+          "detail": "'west' -> 'West'",
+          "n": 2,
+          "reason": null
+        },
+        {
+          "step": "drop_column",
+          "target": "Notes",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Free text with no analytical use."
+        },
+        {
+          "step": "deduplicate",
+          "target": "<table>",
+          "detail": "no rule configured; exact duplicates found",
+          "n": 0,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "row_id",
+          "detail": "Row Id -> integer",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_ref",
+          "detail": "Order Ref -> text",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "ordered_on",
+          "detail": "Ordered On -> datetime",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "reject_cell",
+          "target": "qty",
+          "detail": "value(s) did not match type integer; set to null",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "qty",
+          "detail": "Qty -> integer",
+          "n": 6,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "unit_price",
+          "detail": "Unit Price -> money",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "line_total",
+          "detail": "Line Total -> money",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "discount",
+          "detail": "Discount -> money",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "transform:zero_pad",
+          "target": "zip_code",
+          "detail": "zero_pad to width 5",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "zip_code",
+          "detail": "Zip -> text",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "city",
+          "detail": "City -> text",
+          "n": 6,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "region",
+          "detail": "Region -> category",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "status",
+          "detail": "Status -> category",
+          "n": 7,
+          "reason": null
+        },
+        {
+          "step": "nulls:keep_null",
+          "target": "qty",
+          "detail": "left null deliberately",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "nulls:keep_null",
+          "target": "city",
+          "detail": "left null deliberately",
+          "n": 1,
+          "reason": null
+        },
+        {
+          "step": "derived",
+          "target": "discount_rate",
+          "detail": "discount / line_total | null when line_total == 0",
+          "n": 5,
+          "reason": "Exact rate rather than a rounded one."
+        },
+        {
+          "step": "derived:guard",
+          "target": "discount_rate",
+          "detail": "nulled by line_total == 0",
+          "n": 2,
+          "reason": null
+        },
+        {
+          "step": "derived",
+          "target": "is_revenue",
+          "detail": "status not in ['CANCELED']",
+          "n": 7,
+          "reason": "Cancelled lines still carry money; this makes the filter explicit."
+        }
+      ]
+    }
+  ]
+}

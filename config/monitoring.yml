@@ -1,0 +1,30 @@
+# Monitoring thresholds - Phase 1.3
+#
+# "How much movement is normal?" is a judgement, so it lives here where it can be
+# reviewed and changed, rather than as a constant in src/dtp/monitoring.py.
+#
+# These are compared against the previous snapshot's manifest. On a first run
+# there is no baseline and drift checks report INFO instead.
+
+version: 1
+
+thresholds:
+
+  # Growth is expected as more history arrives; shrinkage almost never is. A
+  # zero shrink tolerance means any lost row raises a critical alert - which is
+  # what you want from a pipeline whose input is supposed to be append-only.
+  row_growth_pct: 25.0
+  row_shrink_pct: 0.0
+
+  # Number of columns allowed to gain nulls before it is reported. Zero, because
+  # this is the failure mode that does not announce itself: schema unchanged,
+  # row count unchanged, and a SUM quietly shrinks.
+  new_null_columns: 0
+
+  # A column appearing or a dtype changing means the contract moved. Set true
+  # only while deliberately reshaping the schema.
+  allow_schema_change: false
+
+  # Cells that could not be typed and were quarantined. Zero on the current
+  # data, so any reject at all is news.
+  max_rejects: 0

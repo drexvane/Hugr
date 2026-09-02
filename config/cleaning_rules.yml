@@ -1,0 +1,302 @@
+# Cleaning rules - Phase 1.2 policy
+#
+# Every per-column decision the roadmap asks to be "documented with rationale"
+# lives here as data, not code. `src/dtp/clean.py` is the engine; this file is
+# the policy, so a stakeholder can review the decisions without reading Python.
+#
+# Calibrated against the real data on 2026-09-02 (180,519 order lines,
+# 469,977 access-log rows). Figures quoted in `reason:` fields are measured,
+# not estimated - see reports/cleaning-report.md after a run.
+
+version: 1
+
+# Files in the source directory that are documentation, not data. Listed rather
+# than ignored silently, so a genuinely unconfigured file still shows up as a
+# problem in the cleaning report instead of being quietly skipped.
+skip:
+  - source: DescriptionDataCoSupplyChain
+    reason: >
+      The vendor's own field glossary (52 of the 53 fact columns). Not a table:
+      it is consumed by dtp.dictionary as the business description of each field.
+
+defaults:
+  trim_whitespace: true          # 17,925 Order Region values had trailing space
+  collapse_internal_spaces: true # "As Seen on  TV!" -> "As Seen on TV!"
+  sentinel_nulls_to_null: true   # "", "N/A", "-", "unknown" all become null
+  money_dp: 2                    # source is float32 written at full precision
+  ratio_dp: 6
+  coordinate_dp: 6
+
+sources:
+
+  # ---------------------------------------------------------------------------
+  DataCoSupplyChainDataset:
+    table: order_items
+    role: fact
+    # PINNED, not detected. The file is Spanish text in cp1252: utf-8 decoding
+    # fails at byte 1709 and there are zero U+FFFD bytes, so the accents are
+    # intact in the source and only a wrong reader would damage them.
+    encoding: cp1252
+    grain: one row per order line item
+    key: [order_item_id]
+    date_formats: ["%m/%d/%Y %H:%M"]
+    row_count_expected: 180519
+
+    # Row-level repairs, applied before typing. Each is conditional so it can
+    # never touch a row that does not exhibit the defect.
+    row_fixes:
+      - id: customer_geo_shift
+        where: "customer_zipcode is blank and customer_state matches ^[0-9]{5}$"
+        do: shift_right
+        columns: [customer_city, customer_state, customer_zipcode]
+        reason: >
+          3 rows hold city='CA', state='95758', zipcode=''. The values are
+          shifted one field left; moving them right restores a valid state code
+          and completes the zipcode. Leaves city null rather than inventing one.
+
+    # Controlled vocabularies. Only mappings that make two columns share one
+    # vocabulary, or that resolve a genuine ambiguity, are listed - source
+    # spellings are otherwise left alone.
+    value_maps:
+      customer_country:
+        "EE. UU.": Estados Unidos
+        # ^ Spanish abbreviation for the USA. order_country spells the same
+        #   country "Estados Unidos", so without this the two columns cannot
+        #   be compared or joined at all.
+      category_name_by_category_id:
+        "13": Electronics (Footwear)
+        "37": Electronics (Outdoors)
+        # ^ Two distinct categories in two departments share the display name
+        #   "Electronics". Grouping by name silently merges 1,127 Footwear rows
+        #   with 2,029 Outdoors rows and invents a category that does not exist.
+        #   Disambiguating the label is correct; folding the ids is not.
+
+    # `nulls:` is the missing-value strategy. Only columns that actually have
+    # missing values need one; `not_applicable` means the blank is meaningful
+    # and must stay null rather than be imputed.
+    columns:
+      - {source: "Order Item Id",                 clean: order_item_id,            type: integer, role: key}
+      - {source: "Order Id",                      clean: order_id,                 type: integer, role: key}
+      - {source: "order date (DateOrders)",        clean: order_date,               type: datetime}
+      - {source: "shipping date (DateOrders)",     clean: shipping_date,            type: datetime}
+      - {source: "Type",                           clean: payment_type,             type: category}
+      - {source: "Order Status",                    clean: order_status,             type: category}
+      - {source: "Delivery Status",                 clean: delivery_status,          type: category}
+      - {source: "Shipping Mode",                   clean: shipping_mode,            type: category}
+      - {source: "Days for shipping (real)",        clean: days_shipping_real,       type: integer}
+      - {source: "Days for shipment (scheduled)",   clean: days_shipping_scheduled,  type: integer}
+      - {source: "Late_delivery_risk",              clean: late_delivery_risk,       type: boolean}
+      - {source: "Order Item Quantity",             clean: order_item_quantity,      type: integer}
+      - {source: "Sales",                           clean: order_item_sales,         type: money}
+      - {source: "Order Item Discount",             clean: order_item_discount,      type: money}
+      - {source: "Order Item Total",                clean: order_item_total,         type: money}
+      - source: "Order Profit Per Order"
+        clean: order_item_profit
+        type: money
+        description: >
+          Profit on this line item, in dollars. Ranges -4,274.98 to 911.80: losses
+          are real and must not be clipped.
+        reason: >
+          Renamed against the source glossary, which calls it "Order Profit Per
+          Order" and invites order-level treatment. It is measured per line item:
+          0 of the 45,902 multi-item orders share one value, and profit == total x
+          ratio holds row by row. SUM over all rows is correct; the source name
+          would lead someone to de-duplicate by order_id and lose $2.58M.
+      - {source: "Product Price",                   clean: product_price,            type: money,
+         description: "Unit list price of the product. One price per product_id; there is no price history in this data."}
+      - {source: "Customer Id",                     clean: customer_id,              type: integer,
+         description: "Surrogate id of the purchasing customer. 20,652 distinct customers across 180,519 lines."}
+      - {source: "Customer Fname",                  clean: customer_first_name,      type: text}
+      - {source: "Customer Lname",                  clean: customer_last_name,       type: text,
+         nulls: keep_null,
+         reason: "8 blank surnames. Imputing a name would be fabrication; the row is still usable."}
+      - {source: "Customer Segment",                clean: customer_segment,         type: category}
+      - {source: "Customer Street",                 clean: customer_street,          type: text}
+      - {source: "Customer City",                   clean: customer_city,            type: text,
+         nulls: keep_null,
+         reason: "Null only for the 3 rows repaired by customer_geo_shift."}
+      - {source: "Customer State",                  clean: customer_state,           type: category}
+      - source: "Customer Zipcode"
+        clean: customer_zipcode
+        type: text
+        transform: zero_pad
+        width: 5
+        description: >
+          US postal code of the customer, as 5 digits of text. Populated for every
+          row; 995 distinct values.
+        reason: >
+          Text, not integer: leading zeros are significant in US zipcodes - and
+          the source has already lost them. 75,508 of 180,519 values (41.8%) are
+          short because the field was stored as a number upstream: all 69,373
+          three-digit values are 603-983 in state PR (Puerto Rico's real range is
+          00601-00988) and all 6,135 four-digit values are 1201-8901 in CT, MA, NJ
+          and RI (whose prefixes are 010-069). US zipcodes are exactly 5 digits, so
+          zero-padding reconstructs the original and nothing else could. The pad is
+          injective here - 995 distinct values before and after - so no two
+          zipcodes collapse into one. Found by validation rule `zipcode_shape`.
+      - {source: "Customer Country",                clean: customer_country,         type: category}
+      - {source: "Latitude",                        clean: store_latitude,           type: coordinate}
+      - {source: "Longitude",                       clean: store_longitude,          type: coordinate}
+      - {source: "Market",                          clean: market,                   type: category}
+      - {source: "Order Region",                    clean: order_region,             type: category}
+      - {source: "Order Country",                   clean: order_country,            type: category}
+      - {source: "Order State",                     clean: order_state,              type: text}
+      - {source: "Order City",                      clean: order_city,               type: text}
+      - source: "Order Zipcode"
+        clean: order_zipcode
+        type: text
+        transform: zero_pad
+        width: 5
+        nulls: not_applicable
+        description: >
+          US postal code of the delivery address, as 5 digits of text. Null for
+          non-US orders, which is most of them. The one fact column the vendor's
+          glossary does not describe.
+        reason: >
+          86.2% blank, but not broken: populated for 24,840 of 24,840 rows whose
+          order_country is Estados Unidos and blank for every non-US order. It is
+          a US-only field, so it stays null elsewhere and is never imputed. Zero
+          padded for the same reason as customer_zipcode - 1,087 four-digit values
+          (1040-8901), every one in CT, ME, MA, NH, NJ, RI or VT, whose real
+          prefixes are 010-089. Injective: 609 distinct values before and after.
+      - {source: "Department Id",                   clean: department_id,            type: integer}
+      - {source: "Department Name",                 clean: department_name,          type: category}
+      - {source: "Category Id",                     clean: category_id,              type: integer}
+      - {source: "Category Name",                   clean: category_name,            type: category}
+      - {source: "Product Card Id",                 clean: product_id,               type: integer}
+      - {source: "Product Name",                    clean: product_name,             type: text,
+         description: "Display name of the product. 118 distinct products; joins to the access log on this once case is folded."}
+      - {source: "Product Image",                   clean: product_image_url,        type: url}
+
+    # Dropped, with the measurement that justifies it. Nothing is dropped for
+    # being merely inconvenient.
+    drop:
+      - {source: "Product Description", reason: "100% blank across all 180,519 rows."}
+      - {source: "Product Status",      reason: "Constant 0 - carries no information."}
+      - {source: "Customer Email",      reason: "Constant 'XXXXXXXXX' - pre-masked at source."}
+      - {source: "Customer Password",   reason: "Constant 'XXXXXXXXX' - pre-masked at source; would be dropped regardless as a credential field."}
+      - {source: "Order Customer Id",   reason: "Byte-identical to Customer Id in all 180,519 rows."}
+      - {source: "Product Category Id", reason: "Byte-identical to Category Id in all 180,519 rows."}
+      - {source: "Order Item Cardprod Id", reason: "Byte-identical to Product Card Id in all 180,519 rows."}
+      - {source: "Order Item Product Price", reason: "Byte-identical to Product Price in all 180,519 rows."}
+      - {source: "Benefit per order",   reason: "Byte-identical to Order Profit Per Order in all 180,519 rows."}
+      - source: "Sales per customer"
+        reason: >
+          Byte-identical to Order Item Total in all 180,519 rows, and the name is
+          actively misleading: it is a per-line-item value, not a per-customer
+          total, so anyone trusting the name double-counts.
+      - source: "Order Item Discount Rate"
+        reason: >
+          Dropped in favour of a recomputation. The stored value is discount/sales
+          rounded to 2dp (max deviation from the exact ratio: 0.0055), which on a
+          large line item is a 9% relative error against order_item_discount.
+          order_item_discount is the primitive; the rate is derived from it.
+      - source: "Order Item Profit Ratio"
+        reason: >
+          Same defect, worse: the stored ratio is profit/total rounded to 2dp and
+          differs from the exact ratio by up to 41.6% relatively (up to $9.30 on a
+          single line). Recomputed from order_item_profit and order_item_total.
+
+    # Computed after typing, from columns that survived. `expr` is really
+    # evaluated (a whitelisted AST walk in clean.py, not eval), so editing it
+    # here changes the output - it is policy, not a comment.
+    derived:
+      - name: order_item_discount_rate
+        type: ratio
+        expr: "order_item_discount / order_item_sales"
+        null_when: "order_item_sales == 0"
+        reason: "Replaces the source column's 2dp rounding with the exact ratio."
+      - name: order_item_profit_ratio
+        type: ratio
+        expr: "order_item_profit / order_item_total"
+        null_when: "order_item_total == 0"
+        reason: "Replaces the source column's 2dp rounding with the exact ratio."
+      - name: shipping_delay_days
+        type: integer
+        expr: "days_shipping_real - days_shipping_scheduled"
+        reason: "Positive = late. Saves every downstream view recomputing it."
+      - name: is_revenue_recognised
+        type: boolean
+        expr: "order_status not in ['CANCELED', 'SUSPECTED_FRAUD']"
+        reason: >
+          The most dangerous property of this dataset. 7,754 rows carrying
+          $1,570,305.36 of order_item_sales never completed, yet they hold full
+          sales and profit values. An unfiltered SUM(sales) overstates revenue by
+          4.27% ($36,784,735.01 -> $35,214,429.65) and SUM(profit) by 4.05%. This
+          flag makes the filter explicit and hard to forget rather than leaving it
+          to whoever writes the next query.
+      - name: is_shipment_valid
+        type: boolean
+        expr: "delivery_status != 'Shipping canceled'"
+        reason: >
+          The same trap in the shipping columns. The 7,754 'Shipping canceled'
+          rows still carry days_shipping_real, and those counters are residue:
+          4,423 of them read as late and 1,774 as early for shipments that never
+          happened. late_delivery_risk agrees with delivery_status on every row
+          but disagrees with (real > scheduled) on exactly those 4,423, so any
+          delay or on-time-rate metric must filter on this flag first.
+
+  # ---------------------------------------------------------------------------
+  tokenized_access_logs:
+    table: access_logs
+    role: event
+    encoding: cp1252
+    grain: one row per product page view
+    key: []            # no natural key; a surrogate is minted on ingest
+    date_formats: ["%m/%d/%Y %H:%M"]
+    row_count_expected: 469977
+
+    deduplicate:
+      strategy: exact_rows
+      reason: >
+        3,249 byte-identical rows. Two views of one product in the same minute
+        from the same IP are indistinguishable here, so they cannot be told apart
+        from a double-logged event. Dropped and counted rather than kept, and the
+        count is reported so the decision stays visible.
+
+    # The vendor's glossary documents only the fact table, so these carry their
+    # own `description:` - the data dictionary treats a field with neither a
+    # glossary entry nor a description as an undocumented gap and fails on it.
+    columns:
+      - {source: "Date",       clean: viewed_at,       type: datetime,
+         description: "Timestamp of the page view, to the minute. Local time, no zone recorded."}
+      - {source: "Product",    clean: product_name,    type: text,
+         description: "Product whose page was viewed. Joins to order_items.product_name once case is folded."}
+      - {source: "Category",   clean: category_name,   type: category,
+         description: "Category of the viewed product, as shown in the URL path."}
+      - {source: "Department", clean: department_name,  type: category,
+         description: "Department of the viewed product, as shown in the URL path.",
+         reason: "All 469,977 values carry a trailing space; lowercase where the fact table is Title Case."}
+      - source: "ip"
+        clean: client_ip
+        type: text
+        description: >
+          IPv4 address of the viewing client. Not a stable visitor id: no session
+          or cookie is recorded, so per-IP counts are a proxy for visitors, not a
+          measure of them.
+      - {source: "url",        clean: request_url,     type: url,
+         description: "Path requested, always /department/{dept}/category/{cat}/product/{product}."}
+
+    drop:
+      - {source: "Month", reason: "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."}
+      - {source: "Hour",  reason: "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."}
+
+    derived:
+      - name: access_log_id
+        type: integer
+        expr: "row_number"
+        reason: "Surrogate key. No column or combination is unique after de-duplication."
+
+    # Joining this table to the fact table is a case-and-language problem, not a
+    # rename. Recorded here so Phase 2 does not rediscover it.
+    join_notes: >
+      Fold case before joining: department_name and category_name are lowercase
+      here and Title Case in order_items. After folding, all 6 departments match.
+      Of 33 categories, 30 match and 3 do not: 'featured shops' and 'indoor
+      outdoor games' have page views but no sales at all, and 'electronics' no
+      longer matches because the fact table deliberately splits it into
+      'Electronics (Footwear)' and 'Electronics (Outdoors)' - join those two on
+      category_id, never on the label. Of 76 products here, 72 match the fact
+      table's 118, so 46 products have no page views and 4 page-viewed products
+      were never ordered.
+

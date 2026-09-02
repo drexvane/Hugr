@@ -1,0 +1,474 @@
+{
+  "fields_total": 13,
+  "fields_documented": 13,
+  "coverage_pct": 100.0,
+  "gaps": [],
+  "grain": {
+    "mini": "one row per order line"
+  },
+  "join_notes": {},
+  "dropped": [
+    {
+      "table": "mini",
+      "source": "Notes",
+      "reason": "Free text with no analytical use."
+    }
+  ],
+  "glossary_unused": [
+    "legacy column"
+  ],
+  "glossary_echoes": [
+    "Unit Price"
+  ],
+  "fields": [
+    {
+      "table": "mini",
+      "name": "row_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Row Id",
+      "declared_type": "integer",
+      "role": "key",
+      "business_description": "Line identifier and the grain of the table.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 7,
+      "minimum": "1",
+      "maximum": "7",
+      "examples": [
+        "1",
+        "2",
+        "3"
+      ],
+      "values": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "rules": [
+        "row_id_unique (error)",
+        "keys_present (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "order_ref",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Order Ref",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Order this line belongs to.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 5,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "A-1",
+        "D-4",
+        "B-2"
+      ],
+      "values": [
+        "A-1",
+        "B-2",
+        "C-3",
+        "D-4",
+        "E-5"
+      ],
+      "rules": [
+        "keys_present (error)",
+        "ref_determines_date (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "ordered_on",
+      "dtype": "datetime64[ns]",
+      "kind": "cleaned",
+      "source_column": "Ordered On",
+      "declared_type": "datetime",
+      "role": null,
+      "business_description": "When the order was placed.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 5,
+      "minimum": "2021-03-04 10:30",
+      "maximum": "2021-03-08 11:00",
+      "examples": [
+        "2021-03-04 10:30",
+        "2021-03-07 08:05",
+        "2021-03-05 09:00"
+      ],
+      "values": [
+        "2021-03-04 10:30",
+        "2021-03-05 09:00",
+        "2021-03-06 14:15",
+        "2021-03-07 08:05",
+        "2021-03-08 11:00"
+      ],
+      "rules": [
+        "ref_determines_date (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "qty",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Qty",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Units ordered.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 1,
+      "null_pct": 14.2857,
+      "distinct": 3,
+      "minimum": "1",
+      "maximum": "3",
+      "examples": [
+        "1",
+        "2",
+        "3"
+      ],
+      "values": [
+        "1",
+        "2",
+        "3"
+      ],
+      "rules": [
+        "qty_positive (error)",
+        "total_identity (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "unit_price",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Unit Price",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Price per unit.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 6,
+      "minimum": "0",
+      "maximum": "99.99",
+      "examples": [
+        "0",
+        "10",
+        "5"
+      ],
+      "values": null,
+      "rules": [
+        "total_identity (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "line_total",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Line Total",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Money charged for this line.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 6,
+      "minimum": "0",
+      "maximum": "99.99",
+      "examples": [
+        "0",
+        "18",
+        "5"
+      ],
+      "values": null,
+      "rules": [
+        "total_identity (error)",
+        "cancelled_carry_money (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "discount",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Discount",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Money taken off this line.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2,
+      "minimum": "0",
+      "maximum": "2",
+      "examples": [
+        "0",
+        "2"
+      ],
+      "values": null,
+      "rules": [
+        "total_identity (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "zip_code",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Zip",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Postal code",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": "zero_pad",
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 6,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "90001",
+        "02110",
+        "07030"
+      ],
+      "values": [
+        "02110",
+        "02120",
+        "07030",
+        "10001",
+        "60601",
+        "90001"
+      ],
+      "rules": [
+        "zip_shape (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "city",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "City",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "City",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 1,
+      "null_pct": 14.2857,
+      "distinct": 5,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "LA",
+        "Boston",
+        "Jersey City"
+      ],
+      "values": [
+        "Boston",
+        "Chicago",
+        "Jersey City",
+        "LA",
+        "New York"
+      ],
+      "rules": [],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "region",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Region",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Sales region.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 3,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "East",
+        "West",
+        "Central"
+      ],
+      "values": [
+        "Central",
+        "East",
+        "West"
+      ],
+      "rules": [],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "status",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Status",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Order status.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 3,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "COMPLETE",
+        "CANCELED",
+        "PENDING"
+      ],
+      "values": [
+        "CANCELED",
+        "COMPLETE",
+        "PENDING"
+      ],
+      "rules": [
+        "keys_present (error)",
+        "status_vocabulary (error)",
+        "revenue_flag (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "discount_rate",
+      "dtype": "Float64",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "ratio",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Exact rate rather than a rounded one.",
+      "expression": "discount / line_total",
+      "transform": null,
+      "null_policy": "null when line_total == 0",
+      "rows": 7,
+      "nulls": 2,
+      "null_pct": 28.5714,
+      "distinct": 2,
+      "minimum": "0",
+      "maximum": "0.111111",
+      "examples": [
+        "0",
+        "0.111111"
+      ],
+      "values": null,
+      "rules": [],
+      "documented": true
+    },
+    {
+      "table": "mini",
+      "name": "is_revenue",
+      "dtype": "boolean",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "boolean",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Cancelled lines still carry money; this makes the filter explicit.",
+      "expression": "status not in ['CANCELED']",
+      "transform": null,
+      "null_policy": null,
+      "rows": 7,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2,
+      "minimum": "False",
+      "maximum": "True",
+      "examples": [
+        "True",
+        "False"
+      ],
+      "values": [
+        "False",
+        "True"
+      ],
+      "rules": [
+        "revenue_flag (error)",
+        "cancelled_carry_money (warn)"
+      ],
+      "documented": true
+    }
+  ]
+}

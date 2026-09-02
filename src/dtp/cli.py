@@ -1,16 +1,31 @@
 """Command-line entry point.
 
+Phase 1.1 - understand the data as it arrived:
+
     python -m dtp.cli audit          profile + schema matrix + risk summary
     python -m dtp.cli profile        profiling report only
     python -m dtp.cli schema         schema inconsistency matrix only
     python -m dtp.cli risks          risk summary only
     python -m dtp.cli synthetic      regenerate the messy test fixture
 
+Phase 1.2/1.3 - turn it into something dependable:
+
+    python -m dtp.cli pipeline       clean, validate, snapshot, document, alert
+    python -m dtp.cli clean          apply config/cleaning_rules.yml
+    python -m dtp.cli validate       apply config/validation_rules.yml
+    python -m dtp.cli dict           rebuild docs/data-dictionary.md
+    python -m dtp.cli versions       list snapshots, or diff two of them
+
 Every command takes --raw to point at a different source directory, which is
 how the same pipeline runs against the fixture and against the real data:
 
     python -m dtp.cli audit --raw data/_synthetic
+    python -m dtp.cli pipeline --raw dataset
     python -m dtp.cli audit                          # defaults to data/raw
+
+Exit codes are the contract: 0 means every check held, 1 means something the
+caller should act on. `pipeline` returns 1 if validation fails, if a field is
+undocumented, or if monitoring raised a critical alert.
 """
 
 from __future__ import annotations
@@ -20,7 +35,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import RAW_DIR, REPORTS_DIR, ROOT
+from . import CLEAN_DIR, RAW_DIR, REPORTS_DIR, ROOT, VERSIONS_DIR
 from . import io_utils, profile as profile_mod, risks as risks_mod, schema_map
 
 
@@ -141,6 +156,104 @@ def cmd_synthetic(args: argparse.Namespace) -> int:
     )
 
 
+# --------------------------------------------------------------------------- #
+# Phase 1.2 / 1.3
+# --------------------------------------------------------------------------- #
+
+def _rel(path: Path) -> str:
+    return str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
+
+
+def cmd_clean(args: argparse.Namespace) -> int:
+    from . import clean as clean_mod
+
+    results, problems, paths = clean_mod.run(
+        raw_dir=args.raw, out_dir=args.clean, config_path=args.config)
+    for p in problems:
+        print("  ! " + p)
+    if not results:
+        print("Nothing cleaned: no configured source in " + str(args.raw))
+        return 1
+    print("")
+    for r in results:
+        print(r.table + ": " + f"{r.rows_in:,}" + " -> " + f"{r.rows_out:,}"
+              + " rows, " + str(r.df.shape[1]) + " cols, "
+              + f"{r.n_rejects:,}" + " rejected cell(s)")
+        for step, n in sorted(r.counts_by_step().items()):
+            print("    " + step + ": " + f"{n:,}")
+    for key in ("markdown", "json"):
+        print("wrote " + _rel(paths[key]))
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    from . import validate as validate_mod
+
+    report, paths = validate_mod.run(clean_dir=args.clean, rules_path=args.rules)
+    print("")
+    for r in report.results:
+        if not r.passed:
+            print("  [" + r.status + "] " + r.table + "." + r.rule.id
+                  + ": " + r.detail)
+    print("\n" + report.verdict())
+    print(", ".join(k + "=" + str(v) for k, v in report.counts.items()))
+    for key in ("markdown", "json"):
+        print("wrote " + _rel(paths[key]))
+    return 0 if report.ok else 1
+
+
+def cmd_dict(args: argparse.Namespace) -> int:
+    from . import dictionary as dict_mod
+
+    doc, paths = dict_mod.run(clean_dir=args.clean, raw_dir=args.raw,
+                              config_path=args.config, rules_path=args.rules)
+    print(str(len(doc.fields)) + " field(s) across "
+          + str(len(doc.tables())) + " table(s); "
+          + format(doc.coverage, ".1f") + "% documented")
+    for g in doc.gaps:
+        print("  ! undocumented: " + g.table + "." + g.name)
+    for key in ("markdown", "json"):
+        print("wrote " + _rel(paths[key]))
+    return 0 if not doc.gaps else 1
+
+
+def cmd_versions(args: argparse.Namespace) -> int:
+    from . import versioning as version_mod
+
+    versions = version_mod.list_versions(args.versions)
+    if args.diff:
+        by_id = {m.version_id: m for m in versions}
+        wanted = list(args.diff)
+        missing = [v for v in wanted if v not in by_id]
+        if missing:
+            print("unknown snapshot(s): " + ", ".join(missing))
+            print("known: " + (", ".join(by_id) or "none"))
+            return 1
+        print(version_mod.format_diff(by_id[wanted[0]], by_id[wanted[1]]))
+        return 0
+    print(version_mod.format_versions(versions), end="")
+    return 0 if versions else 1
+
+
+def cmd_pipeline(args: argparse.Namespace) -> int:
+    from . import pipeline as pipeline_mod
+
+    result = pipeline_mod.run(
+        raw_dir=args.raw, clean_dir=args.clean, versions_dir=args.versions,
+        config_path=args.config, rules_path=args.rules,
+        stop_after=args.stop_after, force_snapshot=args.force, notes=args.notes)
+    print("=== dtp pipeline ===")
+    for s in result.stages:
+        print(s.line())
+    if result.alerts is not None:
+        for a in result.alerts.sorted_alerts():
+            print("  " + a.line())
+    paths = pipeline_mod.write_report(result)
+    print("\n" + result.verdict())
+    print("wrote " + _rel(paths["markdown"]))
+    return 0 if result.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="python -m dtp.cli",
@@ -173,7 +286,52 @@ def build_parser() -> argparse.ArgumentParser:
     syn.add_argument("--rows", type=int, default=500)
     syn.add_argument("--outdir", type=Path, default=ROOT / "data" / "_synthetic")
     syn.set_defaults(func=cmd_synthetic)
+
+    def with_config(p: argparse.ArgumentParser) -> argparse.ArgumentParser:
+        p.add_argument("--raw", type=Path, default=RAW_DIR,
+                       help="source directory (default: data/raw)")
+        p.add_argument("--clean", type=Path, default=CLEAN_DIR,
+                       help="where clean Parquet lives (default: data/clean)")
+        p.add_argument("--config", type=Path, default=None,
+                       help="override config/cleaning_rules.yml")
+        p.add_argument("--rules", type=Path, default=None,
+                       help="override config/validation_rules.yml")
+        p.add_argument("--versions", type=Path, default=VERSIONS_DIR,
+                       help="snapshot directory (default: data/versions)")
+        return p
+
+    with_config(sub.add_parser(
+        "clean", help="apply cleaning rules, write data/clean")).set_defaults(
+        func=cmd_clean)
+    with_config(sub.add_parser(
+        "validate", help="apply validation rules to the clean tables")).set_defaults(
+        func=cmd_validate)
+    with_config(sub.add_parser(
+        "dict", help="rebuild the data dictionary")).set_defaults(func=cmd_dict)
+
+    ver = with_config(sub.add_parser("versions", help="list or diff snapshots"))
+    ver.add_argument("--diff", nargs=2, metavar=("OLD", "NEW"),
+                     help="compare two snapshot ids")
+    ver.set_defaults(func=cmd_versions)
+
+    pipe = with_config(sub.add_parser(
+        "pipeline", help="clean, validate, snapshot, document, alert"))
+    pipe.add_argument("--stop-after", choices=list(pipeline_stages()),
+                      default=None, help="run only up to this stage")
+    pipe.add_argument("--force", action="store_true",
+                      help="publish a snapshot even if validation failed "
+                           "(stamped as forced in the manifest)")
+    pipe.add_argument("--notes", default=None,
+                      help="free text recorded in the snapshot manifest")
+    pipe.set_defaults(func=cmd_pipeline)
     return ap
+
+
+def pipeline_stages() -> tuple[str, ...]:
+    # Imported lazily so `--help` does not pay for pandas.
+    from .pipeline import STAGES
+
+    return STAGES
 
 
 def main(argv: list[str] | None = None) -> int:
