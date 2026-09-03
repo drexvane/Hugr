@@ -12,8 +12,16 @@ nothing downstream silently picks up bad data. `--force` exists for the case
 where you are deliberately capturing a broken state to look at, and it stamps
 the manifest so the snapshot cannot later be mistaken for a clean one.
 
+Alerts are the exception to the stop-on-failure rule: they are written on a
+refused run too. A pipeline that skipped its own alerting whenever something went
+wrong would leave `reports/alerts.md` reading "nothing to report" at precisely the
+moment there was something to report. Publishing stops at the gate; reporting does
+not.
+
 The stage list is data, so `dtp pipeline --stop-after validate` is a real thing
 you can do while iterating on rules without waiting for Parquet to be written.
+An explicit `--stop-after` is a deliberate early exit rather than a failure, so it
+stops the alerting too.
 """
 
 from __future__ import annotations
@@ -124,6 +132,27 @@ def run(raw_dir: Path | None = None, clean_dir: Path | None = None,
         """True when this stage is the last one requested."""
         return stop_after == stage
 
+    def monitor_stage(previous: Any, manifest: Any) -> None:
+        """Report everything the run learned. Runs even when the run failed.
+
+        Monitoring reports; it does not produce. Skipping it because an earlier
+        stage failed would leave `reports/alerts.md` holding the last *successful*
+        run's "nothing to report" at exactly the moment there is something to
+        report - the failure would be in the exit code and absent from the file
+        the alerting actually reads. `snapshots` is omitted when nothing was
+        published, because there is then no new manifest to diff against.
+        """
+        clock = _Clock()
+        alerts, alert_paths = monitor_mod.run(
+            validation=result.validation, cleaning=(tables, problems),
+            snapshots=(previous, manifest) if manifest is not None else None,
+            thresholds=monitor_mod.load_thresholds(thresholds_path),
+            out_dir=reports_dir)
+        result.alerts = alerts
+        result.stages.append(StageResult(
+            "monitor", ok=alerts.ok, summary=alerts.verdict(),
+            seconds=clock.stop(), outputs=_paths(alert_paths)))
+
     # --- clean ------------------------------------------------------------
     clock = _Clock()
     tables, problems, clean_paths = clean_mod.run(
@@ -174,6 +203,8 @@ def run(raw_dir: Path | None = None, clean_dir: Path | None = None,
                      + (previous.version_id if previous else "absent")
                      + ". Re-run with --force to capture the broken state."),
             seconds=clock.stop()))
+        # The run stops publishing here. It does not stop reporting.
+        monitor_stage(previous, None)
         return result
 
     validation_summary: dict[str, Any] = {
@@ -227,15 +258,7 @@ def run(raw_dir: Path | None = None, clean_dir: Path | None = None,
         return result
 
     # --- monitor ----------------------------------------------------------
-    clock = _Clock()
-    alerts, alert_paths = monitor_mod.run(
-        validation=report, cleaning=(tables, problems),
-        snapshots=(previous, manifest),
-        thresholds=monitor_mod.load_thresholds(thresholds_path))
-    result.alerts = alerts
-    result.stages.append(StageResult(
-        "monitor", ok=alerts.ok, summary=alerts.verdict(),
-        seconds=clock.stop(), outputs=_paths(alert_paths)))
+    monitor_stage(previous, manifest)
     return result
 
 

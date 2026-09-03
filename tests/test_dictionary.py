@@ -40,9 +40,9 @@ def glossary_dir(mini_raw: Path) -> Path:
 
 @pytest.fixture
 def built(mini_raw: Path, mini_config: Path, mini_rules: Path, glossary_dir: Path,
-          tmp_path: Path):
+          reports: Path, tmp_path: Path):
     results, _, _ = clean_mod.run(raw_dir=mini_raw, out_dir=tmp_path / "clean",
-                                  config_path=mini_config)
+                                  config_path=mini_config, reports_dir=reports)
     frames = {r.table: r.df for r in results}
     from dtp import validate as validate_mod
     return dict_mod.build(frames, clean_mod.load_config(mini_config),
@@ -240,12 +240,12 @@ def test_payload_is_json_serialisable_and_carries_the_verdict(built):
 
 
 def test_run_writes_both_documents(mini_raw, mini_config, mini_rules, glossary_dir,
-                                   tmp_path):
+                                   reports, tmp_path):
     clean_mod.run(raw_dir=mini_raw, out_dir=tmp_path / "clean",
-                  config_path=mini_config)
+                  config_path=mini_config, reports_dir=reports)
     doc, paths = dict_mod.run(clean_dir=tmp_path / "clean", raw_dir=glossary_dir,
                               config_path=mini_config, rules_path=mini_rules,
-                              out_dir=tmp_path / "docs")
+                              out_dir=tmp_path / "docs", reports_dir=reports)
     assert paths["markdown"].exists() and paths["json"].exists()
     assert doc.coverage == 100.0
     assert "data-dictionary" in paths["markdown"].name

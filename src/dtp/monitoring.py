@@ -122,12 +122,20 @@ def from_validation(report: Any) -> list[Alert]:
         if result.passed:
             continue
         severity = CRITICAL if result.severity == "error" else WARNING
-        detail = str(result.n_violations) + " of " + str(result.n_checked) + " rows"
+        detail = (format(result.n_violations, ",") + " of "
+                  + format(result.n_checked, ",") + " rows")
         if result.error:
             detail = "rule could not run: " + str(result.error)
-        elif result.rule.expect_violations is not None:
-            detail += " (expected exactly "
-            detail += format(result.rule.expect_violations, ",") + ")"
+        else:
+            if result.rule.expect_violations is not None:
+                detail += " (expected exactly "
+                detail += format(result.rule.expect_violations, ",") + ")"
+            # The checker's own one-line explanation - which bound was breached,
+            # which column held the nulls. Without it the alert names a rule id
+            # and a count and leaves the reader to open the report to find out
+            # what was actually wrong.
+            if result.detail:
+                detail += "; " + str(result.detail)
         if result.samples:
             detail += " e.g. " + ", ".join(str(s) for s in result.samples[:3])
         out.append(Alert(
@@ -315,14 +323,17 @@ def render_markdown(report: MonitorReport) -> str:
     if not report.alerts:
         lines += ["Nothing to report: validation held, cleaning quarantined "
                   "nothing, and the snapshot matches its baseline.", ""]
-        return "\n".join(lines) + "\n"
-
-    lines += ["| severity | source | alert | detail |", "| --- | --- | --- | --- |"]
-    for a in report.sorted_alerts():
-        lines.append("| " + a.severity + " | " + a.source + " | "
-                     + a.title.replace("|", r"\|") + " | "
-                     + a.detail.replace("|", r"\|") + " |")
-    lines += ["", "## Thresholds in force", ""]
+    else:
+        lines += ["| severity | source | alert | detail |",
+                  "| --- | --- | --- | --- |"]
+        for a in report.sorted_alerts():
+            lines.append("| " + a.severity + " | " + a.source + " | "
+                         + a.title.replace("|", r"\|") + " | "
+                         + a.detail.replace("|", r"\|") + " |")
+        lines.append("")
+    # Printed even on a clean run: "nothing to report" only means something if the
+    # reader can see what would have been reported.
+    lines += ["## Thresholds in force", ""]
     lines += ["- `" + k + "`: " + str(v)
               for k, v in sorted(report.thresholds.items())]
     lines.append("")

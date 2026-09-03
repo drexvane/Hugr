@@ -1,105 +1,285 @@
 {
-  "generated_at": "2026-09-03T01:10:30",
+  "generated_at": "2026-09-03T22:48:12",
   "problems": [
-    "DescriptionDataCoSupplyChain.csv: no entry in cleaning_rules.yml, so not cleaned",
-    "readme.csv: skipped by config - Not a table, listed so it is not silently ignored."
+    "DescriptionDataCoSupplyChain.csv: skipped by config - The vendor's own field glossary (52 of the 53 fact columns). Not a table: it is consumed by dtp.dictionary as the business description of each field."
   ],
   "tables": [
     {
-      "source": "mini",
-      "table": "mini",
-      "rows_in": 7,
-      "rows_out": 7,
-      "cols_in": 12,
-      "cols_out": 13,
-      "rejected_cells": 1,
-      "warnings": [],
+      "source": "DataCoSupplyChainDataset",
+      "table": "order_items",
+      "rows_in": 180519,
+      "rows_out": 180519,
+      "cols_in": 53,
+      "cols_out": 46,
+      "rejected_cells": 0,
+      "warnings": [
+        "encoding pinned to cp1252 by caller"
+      ],
       "counts_by_step": {
-        "trim_whitespace": 2,
-        "sentinel_null": 2,
-        "collapse_spaces": 1,
-        "row_fix:geo_shift": 1,
-        "value_map": 2,
-        "drop_column": 1,
+        "trim_whitespace": 24251,
+        "collapse_spaces": 5332,
+        "sentinel_null": 336209,
+        "row_fix:customer_geo_shift": 3,
+        "value_map": 114302,
+        "drop_column": 12,
         "deduplicate": 0,
-        "type": 75,
-        "reject_cell": 1,
-        "transform:zero_pad": 1,
-        "nulls:keep_null": 2,
-        "derived": 12,
-        "derived:guard": 2
+        "type": 7245589,
+        "transform:zero_pad": 76595,
+        "nulls:keep_null": 11,
+        "nulls:not_applicable": 155679,
+        "derived": 902595
       },
       "dtypes": {
-        "row_id": "Int64",
-        "order_ref": "string",
-        "ordered_on": "datetime64[ns]",
-        "qty": "Int64",
-        "unit_price": "Float64",
-        "line_total": "Float64",
-        "discount": "Float64",
-        "zip_code": "string",
-        "city": "string",
-        "region": "category",
-        "status": "category",
-        "discount_rate": "Float64",
-        "is_revenue": "boolean"
+        "order_item_id": "Int64",
+        "order_id": "Int64",
+        "order_date": "datetime64[ns]",
+        "shipping_date": "datetime64[ns]",
+        "payment_type": "category",
+        "order_status": "category",
+        "delivery_status": "category",
+        "shipping_mode": "category",
+        "days_shipping_real": "Int64",
+        "days_shipping_scheduled": "Int64",
+        "late_delivery_risk": "boolean",
+        "order_item_quantity": "Int64",
+        "order_item_sales": "Float64",
+        "order_item_discount": "Float64",
+        "order_item_total": "Float64",
+        "order_item_profit": "Float64",
+        "product_price": "Float64",
+        "customer_id": "Int64",
+        "customer_first_name": "string",
+        "customer_last_name": "string",
+        "customer_segment": "category",
+        "customer_street": "string",
+        "customer_city": "string",
+        "customer_state": "category",
+        "customer_zipcode": "string",
+        "customer_country": "category",
+        "store_latitude": "Float64",
+        "store_longitude": "Float64",
+        "market": "category",
+        "order_region": "category",
+        "order_country": "category",
+        "order_state": "string",
+        "order_city": "string",
+        "order_zipcode": "string",
+        "department_id": "Int64",
+        "department_name": "category",
+        "category_id": "Int64",
+        "category_name": "category",
+        "product_id": "Int64",
+        "product_name": "string",
+        "product_image_url": "string",
+        "order_item_discount_rate": "Float64",
+        "order_item_profit_ratio": "Float64",
+        "shipping_delay_days": "Int64",
+        "is_revenue_recognised": "boolean",
+        "is_shipment_valid": "boolean"
       },
       "actions": [
         {
           "step": "trim_whitespace",
-          "target": "Ordered On",
+          "target": "Category Name",
           "detail": "stripped leading/trailing",
-          "n": 1,
-          "reason": null
-        },
-        {
-          "step": "sentinel_null",
-          "target": "Zip",
-          "detail": "recognised as missing",
-          "n": 1,
+          "n": 1475,
           "reason": null
         },
         {
           "step": "collapse_spaces",
-          "target": "City",
+          "target": "Category Name",
           "detail": "collapsed internal runs",
-          "n": 1,
-          "reason": null
-        },
-        {
-          "step": "trim_whitespace",
-          "target": "Region",
-          "detail": "stripped leading/trailing",
-          "n": 1,
+          "n": 68,
           "reason": null
         },
         {
           "step": "sentinel_null",
-          "target": "Notes",
+          "target": "Customer Lname",
           "detail": "recognised as missing",
-          "n": 1,
+          "n": 8,
           "reason": null
         },
         {
-          "step": "row_fix:geo_shift",
-          "target": "City, Region, Zip",
-          "detail": "shift_right where Zip is blank and Region matches ^[0-9]{5}$",
-          "n": 1,
-          "reason": "One row has its geo fields shifted one column left."
+          "step": "trim_whitespace",
+          "target": "Customer Street",
+          "detail": "stripped leading/trailing",
+          "n": 1829,
+          "reason": null
+        },
+        {
+          "step": "collapse_spaces",
+          "target": "Customer Street",
+          "detail": "collapsed internal runs",
+          "n": 1219,
+          "reason": null
+        },
+        {
+          "step": "sentinel_null",
+          "target": "Customer Zipcode",
+          "detail": "recognised as missing",
+          "n": 3,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Department Name",
+          "detail": "stripped leading/trailing",
+          "n": 362,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Order Region",
+          "detail": "stripped leading/trailing",
+          "n": 17925,
+          "reason": null
+        },
+        {
+          "step": "collapse_spaces",
+          "target": "Order Region",
+          "detail": "collapsed internal runs",
+          "n": 4045,
+          "reason": null
+        },
+        {
+          "step": "sentinel_null",
+          "target": "Order Zipcode",
+          "detail": "recognised as missing",
+          "n": 155679,
+          "reason": null
+        },
+        {
+          "step": "sentinel_null",
+          "target": "Product Description",
+          "detail": "recognised as missing",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Product Image",
+          "detail": "stripped leading/trailing",
+          "n": 886,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Product Name",
+          "detail": "stripped leading/trailing",
+          "n": 1774,
+          "reason": null
+        },
+        {
+          "step": "row_fix:customer_geo_shift",
+          "target": "Customer City, Customer State, Customer Zipcode",
+          "detail": "shift_right where customer_zipcode is blank and customer_state matches ^[0-9]{5}$",
+          "n": 3,
+          "reason": "3 rows hold city='CA', state='95758', zipcode=''. The values are shifted one field left; moving them right restores a valid state code and completes the zipcode. Leaves city null rather than inventing one."
         },
         {
           "step": "value_map",
-          "target": "Region",
-          "detail": "'west' -> 'West'",
-          "n": 2,
+          "target": "Customer Country",
+          "detail": "'EE. UU.' -> 'Estados Unidos'",
+          "n": 111146,
+          "reason": null
+        },
+        {
+          "step": "value_map",
+          "target": "Category Name",
+          "detail": "Category Id=13 -> 'Electronics (Footwear)'",
+          "n": 1127,
+          "reason": null
+        },
+        {
+          "step": "value_map",
+          "target": "Category Name",
+          "detail": "Category Id=37 -> 'Electronics (Outdoors)'",
+          "n": 2029,
           "reason": null
         },
         {
           "step": "drop_column",
-          "target": "Notes",
+          "target": "Product Description",
           "detail": "removed from the clean table",
           "n": 1,
-          "reason": "Free text with no analytical use."
+          "reason": "100% blank across all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Product Status",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Constant 0 - carries no information."
+        },
+        {
+          "step": "drop_column",
+          "target": "Customer Email",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Constant 'XXXXXXXXX' - pre-masked at source."
+        },
+        {
+          "step": "drop_column",
+          "target": "Customer Password",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Constant 'XXXXXXXXX' - pre-masked at source; would be dropped regardless as a credential field."
+        },
+        {
+          "step": "drop_column",
+          "target": "Order Customer Id",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Customer Id in all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Product Category Id",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Category Id in all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Order Item Cardprod Id",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Product Card Id in all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Order Item Product Price",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Product Price in all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Benefit per order",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Order Profit Per Order in all 180,519 rows."
+        },
+        {
+          "step": "drop_column",
+          "target": "Sales per customer",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Byte-identical to Order Item Total in all 180,519 rows, and the name is actively misleading: it is a per-line-item value, not a per-customer total, so anyone trusting the name double-counts."
+        },
+        {
+          "step": "drop_column",
+          "target": "Order Item Discount Rate",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Dropped in favour of a recomputation. The stored value is discount/sales rounded to 2dp (max deviation from the exact ratio: 0.0055), which on a large line item is a 9% relative error against order_item_discount. order_item_discount is the primitive; the rate is derived from it."
+        },
+        {
+          "step": "drop_column",
+          "target": "Order Item Profit Ratio",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Same defect, worse: the stored ratio is profit/total rounded to 2dp and differs from the exact ratio by up to 41.6% relatively (up to $9.30 on a single line). Recomputed from order_item_profit and order_item_total."
         },
         {
           "step": "deduplicate",
@@ -110,129 +290,475 @@
         },
         {
           "step": "type",
-          "target": "row_id",
-          "detail": "Row Id -> integer",
-          "n": 7,
+          "target": "order_item_id",
+          "detail": "Order Item Id -> integer",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "order_ref",
-          "detail": "Order Ref -> text",
-          "n": 7,
+          "target": "order_id",
+          "detail": "Order Id -> integer",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "ordered_on",
-          "detail": "Ordered On -> datetime",
-          "n": 7,
-          "reason": null
-        },
-        {
-          "step": "reject_cell",
-          "target": "qty",
-          "detail": "value(s) did not match type integer; set to null",
-          "n": 1,
+          "target": "order_date",
+          "detail": "order date (DateOrders) -> datetime",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "qty",
-          "detail": "Qty -> integer",
-          "n": 6,
+          "target": "shipping_date",
+          "detail": "shipping date (DateOrders) -> datetime",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "unit_price",
-          "detail": "Unit Price -> money",
-          "n": 7,
+          "target": "payment_type",
+          "detail": "Type -> category",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "line_total",
-          "detail": "Line Total -> money",
-          "n": 7,
+          "target": "order_status",
+          "detail": "Order Status -> category",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "discount",
-          "detail": "Discount -> money",
-          "n": 7,
+          "target": "delivery_status",
+          "detail": "Delivery Status -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "shipping_mode",
+          "detail": "Shipping Mode -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "days_shipping_real",
+          "detail": "Days for shipping (real) -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "days_shipping_scheduled",
+          "detail": "Days for shipment (scheduled) -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "late_delivery_risk",
+          "detail": "Late_delivery_risk -> boolean",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_item_quantity",
+          "detail": "Order Item Quantity -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_item_sales",
+          "detail": "Sales -> money",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_item_discount",
+          "detail": "Order Item Discount -> money",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_item_total",
+          "detail": "Order Item Total -> money",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_item_profit",
+          "detail": "Order Profit Per Order -> money",
+          "n": 180519,
+          "reason": "Renamed against the source glossary, which calls it \"Order Profit Per Order\" and invites order-level treatment. It is measured per line item: 0 of the 45,902 multi-item orders share one value, and profit == total x ratio holds row by row. SUM over all rows is correct; the source name would lead someone to de-duplicate by order_id and lose $2.58M."
+        },
+        {
+          "step": "type",
+          "target": "product_price",
+          "detail": "Product Price -> money",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "customer_id",
+          "detail": "Customer Id -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "customer_first_name",
+          "detail": "Customer Fname -> text",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "customer_last_name",
+          "detail": "Customer Lname -> text",
+          "n": 180511,
+          "reason": "8 blank surnames. Imputing a name would be fabrication; the row is still usable."
+        },
+        {
+          "step": "type",
+          "target": "customer_segment",
+          "detail": "Customer Segment -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "customer_street",
+          "detail": "Customer Street -> text",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "customer_city",
+          "detail": "Customer City -> text",
+          "n": 180516,
+          "reason": "Null only for the 3 rows repaired by customer_geo_shift."
+        },
+        {
+          "step": "type",
+          "target": "customer_state",
+          "detail": "Customer State -> category",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "transform:zero_pad",
-          "target": "zip_code",
+          "target": "customer_zipcode",
           "detail": "zero_pad to width 5",
-          "n": 1,
+          "n": 75508,
+          "reason": "Text, not integer: leading zeros are significant in US zipcodes - and the source has already lost them. 75,508 of 180,519 values (41.8%) are short because the field was stored as a number upstream: all 69,373 three-digit values are 603-983 in state PR (Puerto Rico's real range is 00601-00988) and all 6,135 four-digit values are 1201-8901 in CT, MA, NJ and RI (whose prefixes are 010-069). US zipcodes are exactly 5 digits, so zero-padding reconstructs the original and nothing else could. The pad is injective here - 995 distinct values before and after - so no two zipcodes collapse into one. Found by validation rule `zipcode_shape`."
+        },
+        {
+          "step": "type",
+          "target": "customer_zipcode",
+          "detail": "Customer Zipcode -> text",
+          "n": 180519,
+          "reason": "Text, not integer: leading zeros are significant in US zipcodes - and the source has already lost them. 75,508 of 180,519 values (41.8%) are short because the field was stored as a number upstream: all 69,373 three-digit values are 603-983 in state PR (Puerto Rico's real range is 00601-00988) and all 6,135 four-digit values are 1201-8901 in CT, MA, NJ and RI (whose prefixes are 010-069). US zipcodes are exactly 5 digits, so zero-padding reconstructs the original and nothing else could. The pad is injective here - 995 distinct values before and after - so no two zipcodes collapse into one. Found by validation rule `zipcode_shape`."
+        },
+        {
+          "step": "type",
+          "target": "customer_country",
+          "detail": "Customer Country -> category",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "zip_code",
-          "detail": "Zip -> text",
-          "n": 7,
+          "target": "store_latitude",
+          "detail": "Latitude -> coordinate",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "city",
-          "detail": "City -> text",
-          "n": 6,
+          "target": "store_longitude",
+          "detail": "Longitude -> coordinate",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "region",
-          "detail": "Region -> category",
-          "n": 7,
+          "target": "market",
+          "detail": "Market -> category",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "type",
-          "target": "status",
-          "detail": "Status -> category",
-          "n": 7,
+          "target": "order_region",
+          "detail": "Order Region -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_country",
+          "detail": "Order Country -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_state",
+          "detail": "Order State -> text",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "order_city",
+          "detail": "Order City -> text",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "transform:zero_pad",
+          "target": "order_zipcode",
+          "detail": "zero_pad to width 5",
+          "n": 1087,
+          "reason": "86.2% blank, but not broken: populated for 24,840 of 24,840 rows whose order_country is Estados Unidos and blank for every non-US order. It is a US-only field, so it stays null elsewhere and is never imputed. Zero padded for the same reason as customer_zipcode - 1,087 four-digit values (1040-8901), every one in CT, ME, MA, NH, NJ, RI or VT, whose real prefixes are 010-089. Injective: 609 distinct values before and after."
+        },
+        {
+          "step": "type",
+          "target": "order_zipcode",
+          "detail": "Order Zipcode -> text",
+          "n": 24840,
+          "reason": "86.2% blank, but not broken: populated for 24,840 of 24,840 rows whose order_country is Estados Unidos and blank for every non-US order. It is a US-only field, so it stays null elsewhere and is never imputed. Zero padded for the same reason as customer_zipcode - 1,087 four-digit values (1040-8901), every one in CT, ME, MA, NH, NJ, RI or VT, whose real prefixes are 010-089. Injective: 609 distinct values before and after."
+        },
+        {
+          "step": "type",
+          "target": "department_id",
+          "detail": "Department Id -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "department_name",
+          "detail": "Department Name -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "category_id",
+          "detail": "Category Id -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "category_name",
+          "detail": "Category Name -> category",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "product_id",
+          "detail": "Product Card Id -> integer",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "product_name",
+          "detail": "Product Name -> text",
+          "n": 180519,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "product_image_url",
+          "detail": "Product Image -> url",
+          "n": 180519,
           "reason": null
         },
         {
           "step": "nulls:keep_null",
-          "target": "qty",
+          "target": "customer_last_name",
           "detail": "left null deliberately",
-          "n": 1,
-          "reason": null
+          "n": 8,
+          "reason": "8 blank surnames. Imputing a name would be fabrication; the row is still usable."
         },
         {
           "step": "nulls:keep_null",
-          "target": "city",
+          "target": "customer_city",
           "detail": "left null deliberately",
+          "n": 3,
+          "reason": "Null only for the 3 rows repaired by customer_geo_shift."
+        },
+        {
+          "step": "nulls:not_applicable",
+          "target": "order_zipcode",
+          "detail": "left null deliberately",
+          "n": 155679,
+          "reason": "86.2% blank, but not broken: populated for 24,840 of 24,840 rows whose order_country is Estados Unidos and blank for every non-US order. It is a US-only field, so it stays null elsewhere and is never imputed. Zero padded for the same reason as customer_zipcode - 1,087 four-digit values (1040-8901), every one in CT, ME, MA, NH, NJ, RI or VT, whose real prefixes are 010-089. Injective: 609 distinct values before and after."
+        },
+        {
+          "step": "derived",
+          "target": "order_item_discount_rate",
+          "detail": "order_item_discount / order_item_sales | null when order_item_sales == 0",
+          "n": 180519,
+          "reason": "Replaces the source column's 2dp rounding with the exact ratio."
+        },
+        {
+          "step": "derived",
+          "target": "order_item_profit_ratio",
+          "detail": "order_item_profit / order_item_total | null when order_item_total == 0",
+          "n": 180519,
+          "reason": "Replaces the source column's 2dp rounding with the exact ratio."
+        },
+        {
+          "step": "derived",
+          "target": "shipping_delay_days",
+          "detail": "days_shipping_real - days_shipping_scheduled",
+          "n": 180519,
+          "reason": "Positive = late. Saves every downstream view recomputing it."
+        },
+        {
+          "step": "derived",
+          "target": "is_revenue_recognised",
+          "detail": "order_status not in ['CANCELED', 'SUSPECTED_FRAUD']",
+          "n": 180519,
+          "reason": "The most dangerous property of this dataset. 7,754 rows carrying $1,570,305.36 of order_item_sales never completed, yet they hold full sales and profit values. An unfiltered SUM(sales) overstates revenue by 4.27% ($36,784,735.01 -> $35,214,429.65) and SUM(profit) by 4.05%. This flag makes the filter explicit and hard to forget rather than leaving it to whoever writes the next query."
+        },
+        {
+          "step": "derived",
+          "target": "is_shipment_valid",
+          "detail": "delivery_status != 'Shipping canceled'",
+          "n": 180519,
+          "reason": "The same trap in the shipping columns. The 7,754 'Shipping canceled' rows still carry days_shipping_real, and those counters are residue: 4,423 of them read as late and 1,774 as early for shipments that never happened. late_delivery_risk agrees with delivery_status on every row but disagrees with (real > scheduled) on exactly those 4,423, so any delay or on-time-rate metric must filter on this flag first."
+        }
+      ]
+    },
+    {
+      "source": "tokenized_access_logs",
+      "table": "access_logs",
+      "rows_in": 469977,
+      "rows_out": 466728,
+      "cols_in": 8,
+      "cols_out": 7,
+      "rejected_cells": 0,
+      "warnings": [
+        "encoding pinned to cp1252 by caller"
+      ],
+      "counts_by_step": {
+        "collapse_spaces": 13448,
+        "trim_whitespace": 469977,
+        "drop_column": 2,
+        "deduplicate": 3249,
+        "type": 2800368,
+        "derived": 466728
+      },
+      "dtypes": {
+        "viewed_at": "datetime64[ns]",
+        "product_name": "string",
+        "category_name": "category",
+        "department_name": "category",
+        "client_ip": "string",
+        "request_url": "string",
+        "access_log_id": "Int64"
+      },
+      "actions": [
+        {
+          "step": "collapse_spaces",
+          "target": "Category",
+          "detail": "collapsed internal runs",
+          "n": 13448,
+          "reason": null
+        },
+        {
+          "step": "trim_whitespace",
+          "target": "Department",
+          "detail": "stripped leading/trailing",
+          "n": 469977,
+          "reason": null
+        },
+        {
+          "step": "drop_column",
+          "target": "Month",
+          "detail": "removed from the clean table",
           "n": 1,
+          "reason": "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."
+        },
+        {
+          "step": "drop_column",
+          "target": "Hour",
+          "detail": "removed from the clean table",
+          "n": 1,
+          "reason": "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."
+        },
+        {
+          "step": "deduplicate",
+          "target": "<table>",
+          "detail": "exact_rows: rows removed, first occurrence kept",
+          "n": 3249,
+          "reason": "3,249 byte-identical rows. Two views of one product in the same minute from the same IP are indistinguishable here, so they cannot be told apart from a double-logged event. Dropped and counted rather than kept, and the count is reported so the decision stays visible."
+        },
+        {
+          "step": "type",
+          "target": "viewed_at",
+          "detail": "Date -> datetime",
+          "n": 466728,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "product_name",
+          "detail": "Product -> text",
+          "n": 466728,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "category_name",
+          "detail": "Category -> category",
+          "n": 466728,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "department_name",
+          "detail": "Department -> category",
+          "n": 466728,
+          "reason": "All 469,977 values carry a trailing space; lowercase where the fact table is Title Case."
+        },
+        {
+          "step": "type",
+          "target": "client_ip",
+          "detail": "ip -> text",
+          "n": 466728,
+          "reason": null
+        },
+        {
+          "step": "type",
+          "target": "request_url",
+          "detail": "url -> url",
+          "n": 466728,
           "reason": null
         },
         {
           "step": "derived",
-          "target": "discount_rate",
-          "detail": "discount / line_total | null when line_total == 0",
-          "n": 5,
-          "reason": "Exact rate rather than a rounded one."
-        },
-        {
-          "step": "derived:guard",
-          "target": "discount_rate",
-          "detail": "nulled by line_total == 0",
-          "n": 2,
-          "reason": null
-        },
-        {
-          "step": "derived",
-          "target": "is_revenue",
-          "detail": "status not in ['CANCELED']",
-          "n": 7,
-          "reason": "Cancelled lines still carry money; this makes the filter explicit."
+          "target": "access_log_id",
+          "detail": "row_number",
+          "n": 466728,
+          "reason": "Surrogate key. No column or combination is unique after de-duplication."
         }
       ]
     }

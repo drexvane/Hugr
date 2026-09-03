@@ -1,456 +1,477 @@
 {
-  "fields_total": 13,
-  "fields_documented": 13,
+  "fields_total": 53,
+  "fields_documented": 53,
   "coverage_pct": 100.0,
   "gaps": [],
   "grain": {
-    "mini": "one row per order line"
+    "order_items": "one row per order line item",
+    "access_logs": "one row per product page view"
   },
-  "join_notes": {},
+  "join_notes": {
+    "access_logs": "Fold case before joining: department_name and category_name are lowercase here and Title Case in order_items. After folding, all 6 departments match. Of 33 categories, 30 match and 3 do not: 'featured shops' and 'indoor outdoor games' have page views but no sales at all, and 'electronics' no longer matches because the fact table deliberately splits it into 'Electronics (Footwear)' and 'Electronics (Outdoors)' - join those two on category_id, never on the label. Of 76 products here, 72 match the fact table's 118, so 46 products have no page views and 4 page-viewed products were never ordered."
+  },
   "dropped": [
     {
-      "table": "mini",
-      "source": "Notes",
-      "reason": "Free text with no analytical use."
+      "table": "order_items",
+      "source": "Product Description",
+      "reason": "100% blank across all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Product Status",
+      "reason": "Constant 0 - carries no information."
+    },
+    {
+      "table": "order_items",
+      "source": "Customer Email",
+      "reason": "Constant 'XXXXXXXXX' - pre-masked at source."
+    },
+    {
+      "table": "order_items",
+      "source": "Customer Password",
+      "reason": "Constant 'XXXXXXXXX' - pre-masked at source; would be dropped regardless as a credential field."
+    },
+    {
+      "table": "order_items",
+      "source": "Order Customer Id",
+      "reason": "Byte-identical to Customer Id in all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Product Category Id",
+      "reason": "Byte-identical to Category Id in all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Order Item Cardprod Id",
+      "reason": "Byte-identical to Product Card Id in all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Order Item Product Price",
+      "reason": "Byte-identical to Product Price in all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Benefit per order",
+      "reason": "Byte-identical to Order Profit Per Order in all 180,519 rows."
+    },
+    {
+      "table": "order_items",
+      "source": "Sales per customer",
+      "reason": "Byte-identical to Order Item Total in all 180,519 rows, and the name is actively misleading: it is a per-line-item value, not a per-customer total, so anyone trusting the name double-counts.\n"
+    },
+    {
+      "table": "order_items",
+      "source": "Order Item Discount Rate",
+      "reason": "Dropped in favour of a recomputation. The stored value is discount/sales rounded to 2dp (max deviation from the exact ratio: 0.0055), which on a large line item is a 9% relative error against order_item_discount. order_item_discount is the primitive; the rate is derived from it.\n"
+    },
+    {
+      "table": "order_items",
+      "source": "Order Item Profit Ratio",
+      "reason": "Same defect, worse: the stored ratio is profit/total rounded to 2dp and differs from the exact ratio by up to 41.6% relatively (up to $9.30 on a single line). Recomputed from order_item_profit and order_item_total.\n"
+    },
+    {
+      "table": "access_logs",
+      "source": "Month",
+      "reason": "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."
+    },
+    {
+      "table": "access_logs",
+      "source": "Hour",
+      "reason": "Pure derivation of Date - 0 disagreements in 469,977 rows. Recompute at query time."
     }
   ],
-  "glossary_unused": [
-    "legacy column"
-  ],
+  "glossary_unused": [],
   "glossary_echoes": [
-    "Unit Price"
+    "Order Profit Per Order",
+    "Product Price",
+    "Customer Id",
+    "Customer Zipcode",
+    "Product Name"
   ],
   "fields": [
     {
-      "table": "mini",
-      "name": "row_id",
+      "table": "order_items",
+      "name": "order_item_id",
       "dtype": "Int64",
       "kind": "cleaned",
-      "source_column": "Row Id",
+      "source_column": "Order Item Id",
       "declared_type": "integer",
       "role": "key",
-      "business_description": "Line identifier and the grain of the table.",
-      "description_source": "config",
+      "business_description": "Order item code",
+      "description_source": "vendor",
       "decision": null,
       "expression": null,
       "transform": null,
       "null_policy": "keep_null",
-      "rows": 7,
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 180519,
+      "minimum": "1",
+      "maximum": "180519",
+      "examples": [
+        "180517",
+        "179254",
+        "179253"
+      ],
+      "values": null,
+      "rules": [
+        "keys_present (error)",
+        "order_item_id_unique (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Order Id",
+      "declared_type": "integer",
+      "role": "key",
+      "business_description": "Order code",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 65752,
+      "minimum": "1",
+      "maximum": "77204",
+      "examples": [
+        "45461",
+        "31115",
+        "47752"
+      ],
+      "values": null,
+      "rules": [
+        "keys_present (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_date",
+      "dtype": "datetime64[ns]",
+      "kind": "cleaned",
+      "source_column": "order date (DateOrders)",
+      "declared_type": "datetime",
+      "role": null,
+      "business_description": "Date on which the order is made",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 65752,
+      "minimum": "2015-01-01 00:00",
+      "maximum": "2018-01-31 23:38",
+      "examples": [
+        "2016-10-25 14:39",
+        "2016-03-30 04:37",
+        "2016-11-28 01:18"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "shipping_after_order (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "shipping_date",
+      "dtype": "datetime64[ns]",
+      "kind": "cleaned",
+      "source_column": "shipping date (DateOrders)",
+      "declared_type": "datetime",
+      "role": null,
+      "business_description": "Exact date and time of shipment",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 63701,
+      "minimum": "2015-01-03 00:00",
+      "maximum": "2018-02-06 22:14",
+      "examples": [
+        "2015-05-09 18:02",
+        "2015-09-27 20:28",
+        "2015-09-24 23:48"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "shipping_after_order (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "payment_type",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Type",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Type of transaction made",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 4,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "DEBIT",
+        "TRANSFER",
+        "PAYMENT"
+      ],
+      "values": [
+        "CASH",
+        "DEBIT",
+        "PAYMENT",
+        "TRANSFER"
+      ],
+      "rules": [
+        "payment_type_vocabulary (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_status",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Order Status",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Order Status : COMPLETE , PENDING , CLOSED , PENDING_PAYMENT ,CANCELED , PROCESSING ,SUSPECTED_FRAUD ,ON_HOLD ,PAYMENT_REVIEW",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 9,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "COMPLETE",
+        "PENDING_PAYMENT",
+        "PROCESSING"
+      ],
+      "values": [
+        "CANCELED",
+        "CLOSED",
+        "COMPLETE",
+        "ON_HOLD",
+        "PAYMENT_REVIEW",
+        "PENDING",
+        "PENDING_PAYMENT",
+        "PROCESSING",
+        "SUSPECTED_FRAUD"
+      ],
+      "rules": [
+        "core_measures_present (error)",
+        "order_status_vocabulary (error)",
+        "revenue_flag_matches_status (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "delivery_status",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Delivery Status",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Delivery status of orders: Advance shipping , Late delivery , Shipping canceled , Shipping on time",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 4,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Late delivery",
+        "Advance shipping",
+        "Shipping on time"
+      ],
+      "values": [
+        "Advance shipping",
+        "Late delivery",
+        "Shipping canceled",
+        "Shipping on time"
+      ],
+      "rules": [
+        "core_measures_present (error)",
+        "delivery_status_vocabulary (error)",
+        "late_risk_matches_delivery_status (error)",
+        "cancelled_shipments_flagged (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "shipping_mode",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Shipping Mode",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "The following shipping modes are presented : Standard Class , First Class , Second Class , Same Day",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 4,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Standard Class",
+        "Second Class",
+        "First Class"
+      ],
+      "values": [
+        "First Class",
+        "Same Day",
+        "Second Class",
+        "Standard Class"
+      ],
+      "rules": [
+        "shipping_mode_vocabulary (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "days_shipping_real",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Days for shipping (real)",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Actual shipping days of the purchased product",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
       "nulls": 0,
       "null_pct": 0.0,
       "distinct": 7,
-      "minimum": "1",
-      "maximum": "7",
+      "minimum": "0",
+      "maximum": "6",
       "examples": [
-        "1",
         "2",
-        "3"
+        "3",
+        "6"
       ],
       "values": [
+        "0",
         "1",
         "2",
         "3",
         "4",
         "5",
-        "6",
-        "7"
+        "6"
       ],
       "rules": [
-        "row_id_unique (error)",
-        "keys_present (error)"
+        "shipping_days_non_negative (error)",
+        "shipping_days_envelope (warn)",
+        "shipping_delay_recomputation (error)",
+        "order_id_determines_header (error)"
       ],
       "documented": true
     },
     {
-      "table": "mini",
-      "name": "order_ref",
-      "dtype": "string",
-      "kind": "cleaned",
-      "source_column": "Order Ref",
-      "declared_type": "text",
-      "role": null,
-      "business_description": "Order this line belongs to.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 5,
-      "minimum": null,
-      "maximum": null,
-      "examples": [
-        "A-1",
-        "D-4",
-        "B-2"
-      ],
-      "values": [
-        "A-1",
-        "B-2",
-        "C-3",
-        "D-4",
-        "E-5"
-      ],
-      "rules": [
-        "keys_present (error)",
-        "ref_determines_date (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "ordered_on",
-      "dtype": "datetime64[ns]",
-      "kind": "cleaned",
-      "source_column": "Ordered On",
-      "declared_type": "datetime",
-      "role": null,
-      "business_description": "When the order was placed.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 5,
-      "minimum": "2021-03-04 10:30",
-      "maximum": "2021-03-08 11:00",
-      "examples": [
-        "2021-03-04 10:30",
-        "2021-03-07 08:05",
-        "2021-03-05 09:00"
-      ],
-      "values": [
-        "2021-03-04 10:30",
-        "2021-03-05 09:00",
-        "2021-03-06 14:15",
-        "2021-03-07 08:05",
-        "2021-03-08 11:00"
-      ],
-      "rules": [
-        "ref_determines_date (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "qty",
+      "table": "order_items",
+      "name": "days_shipping_scheduled",
       "dtype": "Int64",
       "kind": "cleaned",
-      "source_column": "Qty",
+      "source_column": "Days for shipment (scheduled)",
       "declared_type": "integer",
       "role": null,
-      "business_description": "Units ordered.",
-      "description_source": "config",
+      "business_description": "Days of scheduled delivery of the purchased product",
+      "description_source": "vendor",
       "decision": null,
       "expression": null,
       "transform": null,
       "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 1,
-      "null_pct": 14.2857,
-      "distinct": 3,
-      "minimum": "1",
-      "maximum": "3",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 4,
+      "minimum": "0",
+      "maximum": "4",
       "examples": [
+        "4",
+        "2",
+        "1"
+      ],
+      "values": [
+        "0",
         "1",
         "2",
-        "3"
-      ],
-      "values": [
-        "1",
-        "2",
-        "3"
+        "4"
       ],
       "rules": [
-        "qty_positive (error)",
-        "total_identity (error)"
+        "shipping_days_non_negative (error)",
+        "shipping_delay_recomputation (error)"
       ],
       "documented": true
     },
     {
-      "table": "mini",
-      "name": "unit_price",
-      "dtype": "Float64",
-      "kind": "cleaned",
-      "source_column": "Unit Price",
-      "declared_type": "money",
-      "role": null,
-      "business_description": "Price per unit.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 6,
-      "minimum": "0",
-      "maximum": "99.99",
-      "examples": [
-        "0",
-        "10",
-        "5"
-      ],
-      "values": null,
-      "rules": [
-        "total_identity (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "line_total",
-      "dtype": "Float64",
-      "kind": "cleaned",
-      "source_column": "Line Total",
-      "declared_type": "money",
-      "role": null,
-      "business_description": "Money charged for this line.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 6,
-      "minimum": "0",
-      "maximum": "99.99",
-      "examples": [
-        "0",
-        "18",
-        "5"
-      ],
-      "values": null,
-      "rules": [
-        "total_identity (error)",
-        "cancelled_carry_money (warn)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "discount",
-      "dtype": "Float64",
-      "kind": "cleaned",
-      "source_column": "Discount",
-      "declared_type": "money",
-      "role": null,
-      "business_description": "Money taken off this line.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 2,
-      "minimum": "0",
-      "maximum": "2",
-      "examples": [
-        "0",
-        "2"
-      ],
-      "values": null,
-      "rules": [
-        "total_identity (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "zip_code",
-      "dtype": "string",
-      "kind": "cleaned",
-      "source_column": "Zip",
-      "declared_type": "text",
-      "role": null,
-      "business_description": "Postal code",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": "zero_pad",
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 6,
-      "minimum": null,
-      "maximum": null,
-      "examples": [
-        "90001",
-        "02110",
-        "07030"
-      ],
-      "values": [
-        "02110",
-        "02120",
-        "07030",
-        "10001",
-        "60601",
-        "90001"
-      ],
-      "rules": [
-        "zip_shape (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "city",
-      "dtype": "string",
-      "kind": "cleaned",
-      "source_column": "City",
-      "declared_type": "text",
-      "role": null,
-      "business_description": "City",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 1,
-      "null_pct": 14.2857,
-      "distinct": 5,
-      "minimum": null,
-      "maximum": null,
-      "examples": [
-        "LA",
-        "Boston",
-        "Jersey City"
-      ],
-      "values": [
-        "Boston",
-        "Chicago",
-        "Jersey City",
-        "LA",
-        "New York"
-      ],
-      "rules": [],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "region",
-      "dtype": "category",
-      "kind": "cleaned",
-      "source_column": "Region",
-      "declared_type": "category",
-      "role": null,
-      "business_description": "Sales region.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 3,
-      "minimum": null,
-      "maximum": null,
-      "examples": [
-        "East",
-        "West",
-        "Central"
-      ],
-      "values": [
-        "Central",
-        "East",
-        "West"
-      ],
-      "rules": [],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "status",
-      "dtype": "category",
-      "kind": "cleaned",
-      "source_column": "Status",
-      "declared_type": "category",
-      "role": null,
-      "business_description": "Order status.",
-      "description_source": "config",
-      "decision": null,
-      "expression": null,
-      "transform": null,
-      "null_policy": "keep_null",
-      "rows": 7,
-      "nulls": 0,
-      "null_pct": 0.0,
-      "distinct": 3,
-      "minimum": null,
-      "maximum": null,
-      "examples": [
-        "COMPLETE",
-        "CANCELED",
-        "PENDING"
-      ],
-      "values": [
-        "CANCELED",
-        "COMPLETE",
-        "PENDING"
-      ],
-      "rules": [
-        "keys_present (error)",
-        "status_vocabulary (error)",
-        "revenue_flag (error)"
-      ],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "discount_rate",
-      "dtype": "Float64",
-      "kind": "derived",
-      "source_column": null,
-      "declared_type": "ratio",
-      "role": null,
-      "business_description": null,
-      "description_source": null,
-      "decision": "Exact rate rather than a rounded one.",
-      "expression": "discount / line_total",
-      "transform": null,
-      "null_policy": "null when line_total == 0",
-      "rows": 7,
-      "nulls": 2,
-      "null_pct": 28.5714,
-      "distinct": 2,
-      "minimum": "0",
-      "maximum": "0.111111",
-      "examples": [
-        "0",
-        "0.111111"
-      ],
-      "values": null,
-      "rules": [],
-      "documented": true
-    },
-    {
-      "table": "mini",
-      "name": "is_revenue",
+      "table": "order_items",
+      "name": "late_delivery_risk",
       "dtype": "boolean",
-      "kind": "derived",
-      "source_column": null,
+      "kind": "cleaned",
+      "source_column": "Late_delivery_risk",
       "declared_type": "boolean",
       "role": null,
-      "business_description": null,
-      "description_source": null,
-      "decision": "Cancelled lines still carry money; this makes the filter explicit.",
-      "expression": "status not in ['CANCELED']",
+      "business_description": "Categorical variable that indicates if sending is late (1), it is not late (0).",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
       "transform": null,
-      "null_policy": null,
-      "rows": 7,
+      "null_policy": "keep_null",
+      "rows": 180519,
       "nulls": 0,
       "null_pct": 0.0,
       "distinct": 2,
@@ -465,8 +486,1385 @@
         "True"
       ],
       "rules": [
-        "revenue_flag (error)",
-        "cancelled_carry_money (warn)"
+        "late_risk_matches_delivery_status (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_quantity",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Order Item Quantity",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Number of products per order",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 5,
+      "minimum": "1",
+      "maximum": "5",
+      "examples": [
+        "1",
+        "5",
+        "3"
+      ],
+      "values": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "rules": [
+        "core_measures_present (error)",
+        "quantities_positive (error)",
+        "quantity_envelope (warn)",
+        "sales_equals_price_times_quantity (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_sales",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Sales",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Value in sales",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 193,
+      "minimum": "9.99",
+      "maximum": "1999.99",
+      "examples": [
+        "129.99",
+        "399.98",
+        "199.99"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "money_non_negative (error)",
+        "discount_not_above_sales (error)",
+        "sales_equals_price_times_quantity (error)",
+        "total_equals_sales_minus_discount (error)",
+        "discount_rate_recomputation (error)",
+        "cancelled_rows_still_carry_sales (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_discount",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Order Item Discount",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Order item discount value",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 1017,
+      "minimum": "0",
+      "maximum": "500",
+      "examples": [
+        "0",
+        "6",
+        "12"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "money_non_negative (error)",
+        "discount_not_above_sales (error)",
+        "total_equals_sales_minus_discount (error)",
+        "discount_rate_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_total",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Order Item Total",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Total amount per order",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2927,
+      "minimum": "7.49",
+      "maximum": "1939.99",
+      "examples": [
+        "122.84",
+        "109.19",
+        "127.39"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "money_non_negative (error)",
+        "total_equals_sales_minus_discount (error)",
+        "profit_ratio_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_profit",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Order Profit Per Order",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Profit on this line item, in dollars. Ranges -4,274.98 to 911.80: losses are real and must not be clipped.",
+      "description_source": "config",
+      "decision": "Renamed against the source glossary, which calls it \"Order Profit Per Order\" and invites order-level treatment. It is measured per line item: 0 of the 45,902 multi-item orders share one value, and profit == total x ratio holds row by row. SUM over all rows is correct; the source name would lead someone to de-duplicate by order_id and lose $2.58M.",
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 21998,
+      "minimum": "-4274.98",
+      "maximum": "911.8",
+      "examples": [
+        "0",
+        "143.99",
+        "72"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "profit_ratio_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "product_price",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Product Price",
+      "declared_type": "money",
+      "role": null,
+      "business_description": "Unit list price of the product. One price per product_id; there is no price history in this data.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 75,
+      "minimum": "9.99",
+      "maximum": "1999.99",
+      "examples": [
+        "59.99",
+        "129.99",
+        "50"
+      ],
+      "values": null,
+      "rules": [
+        "core_measures_present (error)",
+        "money_non_negative (error)",
+        "sales_equals_price_times_quantity (error)",
+        "product_id_determines_price (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Customer Id",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Surrogate id of the purchasing customer. 20,652 distinct customers across 180,519 lines.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 20652,
+      "minimum": "1",
+      "maximum": "20757",
+      "examples": [
+        "5654",
+        "10591",
+        "5004"
+      ],
+      "values": null,
+      "rules": [
+        "keys_present (error)",
+        "order_id_determines_header (error)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_first_name",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Customer Fname",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Customer name",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 782,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_last_name",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Customer Lname",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Customer lastname",
+      "description_source": "vendor",
+      "decision": "8 blank surnames. Imputing a name would be fabrication; the row is still usable.",
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 8,
+      "null_pct": 0.0044,
+      "distinct": 1109,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "known_sparse_fields (warn)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_segment",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Customer Segment",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Types of Customers: Consumer , Corporate , Home Office",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 3,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Consumer",
+        "Corporate",
+        "Home Office"
+      ],
+      "values": [
+        "Consumer",
+        "Corporate",
+        "Home Office"
+      ],
+      "rules": [
+        "customer_segment_vocabulary (error)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_street",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Customer Street",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Street to which the store where the purchase is registered belongs",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 6930,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_city",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Customer City",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "City where the customer made the purchase",
+      "description_source": "vendor",
+      "decision": "Null only for the 3 rows repaired by customer_geo_shift.",
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 3,
+      "null_pct": 0.0017,
+      "distinct": 562,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Caguas",
+        "Chicago",
+        "Los Angeles"
+      ],
+      "values": null,
+      "rules": [
+        "known_sparse_fields (warn)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_state",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Customer State",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "State to which the store where the purchase is registered belongs",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 44,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "PR",
+        "CA",
+        "NY"
+      ],
+      "values": null,
+      "rules": [
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_zipcode",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Customer Zipcode",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "US postal code of the customer, as 5 digits of text. Populated for every row; 995 distinct values.",
+      "description_source": "config",
+      "decision": "Text, not integer: leading zeros are significant in US zipcodes - and the source has already lost them. 75,508 of 180,519 values (41.8%) are short because the field was stored as a number upstream: all 69,373 three-digit values are 603-983 in state PR (Puerto Rico's real range is 00601-00988) and all 6,135 four-digit values are 1201-8901 in CT, MA, NJ and RI (whose prefixes are 010-069). US zipcodes are exactly 5 digits, so zero-padding reconstructs the original and nothing else could. The pad is injective here - 995 distinct values before and after - so no two zipcodes collapse into one. Found by validation rule `zipcode_shape`.",
+      "expression": null,
+      "transform": "zero_pad",
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 995,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "00725",
+        "00921",
+        "23455"
+      ],
+      "values": null,
+      "rules": [
+        "zipcode_shape (error)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "customer_country",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Customer Country",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Country where the customer made the purchase",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Estados Unidos",
+        "Puerto Rico"
+      ],
+      "values": [
+        "Estados Unidos",
+        "Puerto Rico"
+      ],
+      "rules": [
+        "customer_country_vocabulary (warn)",
+        "customer_id_determines_attributes (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "store_latitude",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Latitude",
+      "declared_type": "coordinate",
+      "role": null,
+      "business_description": "Latitude corresponding to location of store",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 11250,
+      "minimum": "-33.9376",
+      "maximum": "48.7819",
+      "examples": [
+        "18.2276",
+        "39.4959",
+        "18.2276"
+      ],
+      "values": null,
+      "rules": [
+        "latitude_in_range (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "store_longitude",
+      "dtype": "Float64",
+      "kind": "cleaned",
+      "source_column": "Longitude",
+      "declared_type": "coordinate",
+      "role": null,
+      "business_description": "Longitude corresponding to location of store",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 4487,
+      "minimum": "-158.026",
+      "maximum": "115.263",
+      "examples": [
+        "-66.3706",
+        "-66.3706",
+        "-66.3706"
+      ],
+      "values": null,
+      "rules": [
+        "longitude_in_range (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "market",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Market",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Market to where the order is delivered : Africa , Europe , LATAM , Pacific Asia , USCA",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 5,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "LATAM",
+        "Europe",
+        "Pacific Asia"
+      ],
+      "values": [
+        "Africa",
+        "Europe",
+        "LATAM",
+        "Pacific Asia",
+        "USCA"
+      ],
+      "rules": [
+        "market_vocabulary (error)",
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_region",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Order Region",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Region of the world where the order is delivered : Southeast Asia ,South Asia ,Oceania ,Eastern Asia, West Asia , West of USA , US Center , West Africa, Central Africa ,North Africa ,Western Europe ,Northern , Caribbean , South America ,East Africa ,Southern Europe , East of USA ,Canada ,Southern Africa , Central Asia , Europe , Central America, Eastern Europe , South of USA",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 23,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Central America",
+        "Western Europe",
+        "South America"
+      ],
+      "values": null,
+      "rules": [
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_country",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Order Country",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Destination country of the order",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 164,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Estados Unidos",
+        "Francia",
+        "M\u00e9xico"
+      ],
+      "values": null,
+      "rules": [
+        "order_id_determines_header (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_state",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Order State",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "State of the region where the order is delivered",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 1089,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Inglaterra",
+        "California",
+        "Isla de Francia"
+      ],
+      "values": null,
+      "rules": [],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_city",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Order City",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Destination city of the order",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 3597,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Santo Domingo",
+        "New York City",
+        "Los Angeles"
+      ],
+      "values": null,
+      "rules": [],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_zipcode",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Order Zipcode",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "US postal code of the delivery address, as 5 digits of text. Null for non-US orders, which is most of them. The one fact column the vendor's glossary does not describe.",
+      "description_source": "config",
+      "decision": "86.2% blank, but not broken: populated for 24,840 of 24,840 rows whose order_country is Estados Unidos and blank for every non-US order. It is a US-only field, so it stays null elsewhere and is never imputed. Zero padded for the same reason as customer_zipcode - 1,087 four-digit values (1040-8901), every one in CT, ME, MA, NH, NJ, RI or VT, whose real prefixes are 010-089. Injective: 609 distinct values before and after.",
+      "expression": null,
+      "transform": "zero_pad",
+      "null_policy": "not_applicable",
+      "rows": 180519,
+      "nulls": 155679,
+      "null_pct": 86.2397,
+      "distinct": 609,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "10035",
+        "10009",
+        "10024"
+      ],
+      "values": null,
+      "rules": [
+        "known_sparse_fields (warn)",
+        "order_zipcode_shape (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "department_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Department Id",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Department code of store",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 11,
+      "minimum": "2",
+      "maximum": "12",
+      "examples": [
+        "7",
+        "4",
+        "5"
+      ],
+      "values": [
+        "10",
+        "11",
+        "12",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9"
+      ],
+      "rules": [
+        "keys_present (error)",
+        "category_id_determines_department (error)",
+        "department_id_determines_name (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "department_name",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Department Name",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Department name of store",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 11,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Fan Shop",
+        "Apparel",
+        "Golf"
+      ],
+      "values": [
+        "Apparel",
+        "Book Shop",
+        "Discs Shop",
+        "Fan Shop",
+        "Fitness",
+        "Footwear",
+        "Golf",
+        "Health and Beauty",
+        "Outdoors",
+        "Pet Shop",
+        "Technology"
+      ],
+      "rules": [
+        "department_id_determines_name (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "category_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Category Id",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Product category code",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 51,
+      "minimum": "2",
+      "maximum": "76",
+      "examples": [
+        "17",
+        "18",
+        "24"
+      ],
+      "values": null,
+      "rules": [
+        "keys_present (error)",
+        "category_id_determines_name (error)",
+        "category_id_determines_department (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "category_name",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Category Name",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Description of the product category",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 51,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Cleats",
+        "Men's Footwear",
+        "Women's Apparel"
+      ],
+      "values": null,
+      "rules": [
+        "category_id_determines_name (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "product_id",
+      "dtype": "Int64",
+      "kind": "cleaned",
+      "source_column": "Product Card Id",
+      "declared_type": "integer",
+      "role": null,
+      "business_description": "Product code",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 118,
+      "minimum": "19",
+      "maximum": "1363",
+      "examples": [
+        "365",
+        "403",
+        "502"
+      ],
+      "values": null,
+      "rules": [
+        "keys_present (error)",
+        "product_id_determines_name (error)",
+        "product_id_determines_price (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "product_name",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Product Name",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Display name of the product. 118 distinct products; joins to the access log on this once case is folded.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 118,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Perfect Fitness Perfect Rip Deck",
+        "Nike Men's CJ Elite 2 TD Football Cleat",
+        "Nike Men's Dri-FIT Victory Golf Polo"
+      ],
+      "values": null,
+      "rules": [
+        "product_id_determines_name (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "product_image_url",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Product Image",
+      "declared_type": "url",
+      "role": null,
+      "business_description": "Link of visit and purchase of the product",
+      "description_source": "vendor",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 118,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "product_image_is_url (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_discount_rate",
+      "dtype": "Float64",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "ratio",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Replaces the source column's 2dp rounding with the exact ratio.",
+      "expression": "order_item_discount / order_item_sales",
+      "transform": null,
+      "null_policy": "null when order_item_sales == 0",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 945,
+      "minimum": "0",
+      "maximum": "0.250433",
+      "examples": [
+        "0",
+        "0.010001",
+        "0.030002"
+      ],
+      "values": null,
+      "rules": [
+        "discount_rate_envelope (warn)",
+        "discount_rate_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "order_item_profit_ratio",
+      "dtype": "Float64",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "ratio",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Replaces the source column's 2dp rounding with the exact ratio.",
+      "expression": "order_item_profit / order_item_total",
+      "transform": null,
+      "null_policy": "null when order_item_total == 0",
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 21743,
+      "minimum": "-2.75081",
+      "maximum": "0.500611",
+      "examples": [
+        "0.5",
+        "0.489999",
+        "0.479999"
+      ],
+      "values": null,
+      "rules": [
+        "profit_ratio_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "shipping_delay_days",
+      "dtype": "Int64",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "integer",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Positive = late. Saves every downstream view recomputing it.",
+      "expression": "days_shipping_real - days_shipping_scheduled",
+      "transform": null,
+      "null_policy": null,
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 7,
+      "minimum": "-2",
+      "maximum": "4",
+      "examples": [
+        "1",
+        "0",
+        "2"
+      ],
+      "values": [
+        "-1",
+        "-2",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "rules": [
+        "shipping_delay_recomputation (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "is_revenue_recognised",
+      "dtype": "boolean",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "boolean",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "The most dangerous property of this dataset. 7,754 rows carrying $1,570,305.36 of order_item_sales never completed, yet they hold full sales and profit values. An unfiltered SUM(sales) overstates revenue by 4.27% ($36,784,735.01 -> $35,214,429.65) and SUM(profit) by 4.05%. This flag makes the filter explicit and hard to forget rather than leaving it to whoever writes the next query.",
+      "expression": "order_status not in ['CANCELED', 'SUSPECTED_FRAUD']",
+      "transform": null,
+      "null_policy": null,
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2,
+      "minimum": "False",
+      "maximum": "True",
+      "examples": [
+        "True",
+        "False"
+      ],
+      "values": [
+        "False",
+        "True"
+      ],
+      "rules": [
+        "revenue_flag_matches_status (error)",
+        "cancelled_rows_still_carry_sales (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "order_items",
+      "name": "is_shipment_valid",
+      "dtype": "boolean",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "boolean",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "The same trap in the shipping columns. The 7,754 'Shipping canceled' rows still carry days_shipping_real, and those counters are residue: 4,423 of them read as late and 1,774 as early for shipments that never happened. late_delivery_risk agrees with delivery_status on every row but disagrees with (real > scheduled) on exactly those 4,423, so any delay or on-time-rate metric must filter on this flag first.",
+      "expression": "delivery_status != 'Shipping canceled'",
+      "transform": null,
+      "null_policy": null,
+      "rows": 180519,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 2,
+      "minimum": "False",
+      "maximum": "True",
+      "examples": [
+        "True",
+        "False"
+      ],
+      "values": [
+        "False",
+        "True"
+      ],
+      "rules": [
+        "cancelled_shipments_flagged (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "viewed_at",
+      "dtype": "datetime64[ns]",
+      "kind": "cleaned",
+      "source_column": "Date",
+      "declared_type": "datetime",
+      "role": null,
+      "business_description": "Timestamp of the page view, to the minute. Local time, no zone recorded.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 160815,
+      "minimum": "2017-09-01 06:00",
+      "maximum": "2018-01-31 23:58",
+      "examples": [
+        "2017-09-14 21:05",
+        "2017-09-14 21:41",
+        "2017-09-14 20:34"
+      ],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "product_name",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "Product",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "Product whose page was viewed. Joins to order_items.product_name once case is folded.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 76,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "Perfect Fitness Perfect Rip Deck",
+        "adidas Kids' RG III Mid Football Cleat",
+        "Nike Men's Dri-FIT Victory Golf Polo"
+      ],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)",
+        "product_in_fact_table (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "category_name",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Category",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Category of the viewed product, as shown in the URL path.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 33,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "cleats",
+        "shop by sport",
+        "featured shops"
+      ],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)",
+        "category_in_fact_table (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "department_name",
+      "dtype": "category",
+      "kind": "cleaned",
+      "source_column": "Department",
+      "declared_type": "category",
+      "role": null,
+      "business_description": "Department of the viewed product, as shown in the URL path.",
+      "description_source": "config",
+      "decision": "All 469,977 values carry a trailing space; lowercase where the fact table is Title Case.",
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 6,
+      "minimum": null,
+      "maximum": null,
+      "examples": [
+        "outdoors",
+        "apparel",
+        "footwear"
+      ],
+      "values": [
+        "apparel",
+        "fan shop",
+        "fitness",
+        "footwear",
+        "golf",
+        "outdoors"
+      ],
+      "rules": [
+        "log_keys_present (error)",
+        "department_in_fact_table (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "client_ip",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "ip",
+      "declared_type": "text",
+      "role": null,
+      "business_description": "IPv4 address of the viewing client. Not a stable visitor id: no session or cookie is recorded, so per-IP counts are a proxy for visitors, not a measure of them.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 3340,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)",
+        "client_ip_shape (error)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "request_url",
+      "dtype": "string",
+      "kind": "cleaned",
+      "source_column": "url",
+      "declared_type": "url",
+      "role": null,
+      "business_description": "Path requested, always /department/{dept}/category/{cat}/product/{product}.",
+      "description_source": "config",
+      "decision": null,
+      "expression": null,
+      "transform": null,
+      "null_policy": "keep_null",
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 152,
+      "minimum": null,
+      "maximum": null,
+      "examples": [],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)",
+        "request_url_shape (warn)"
+      ],
+      "documented": true
+    },
+    {
+      "table": "access_logs",
+      "name": "access_log_id",
+      "dtype": "Int64",
+      "kind": "derived",
+      "source_column": null,
+      "declared_type": "integer",
+      "role": null,
+      "business_description": null,
+      "description_source": null,
+      "decision": "Surrogate key. No column or combination is unique after de-duplication.",
+      "expression": "row_number",
+      "transform": null,
+      "null_policy": null,
+      "rows": 466728,
+      "nulls": 0,
+      "null_pct": 0.0,
+      "distinct": 466728,
+      "minimum": "1",
+      "maximum": "466728",
+      "examples": [
+        "1",
+        "2",
+        "3"
+      ],
+      "values": null,
+      "rules": [
+        "log_keys_present (error)",
+        "log_id_unique (error)"
       ],
       "documented": true
     }

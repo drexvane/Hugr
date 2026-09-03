@@ -151,7 +151,11 @@ def _check_not_null(rule: Rule, df: pd.DataFrame, _: dict[str, pd.DataFrame]):
         if n:
             per_col.append(col + "=" + f"{n:,}")
     detail = "nulls: " + (", ".join(per_col) if per_col else "none")
-    return len(df) * len(rule.columns), total, detail, per_col[:SAMPLE_SIZE]
+    # No samples: the offending value is null by definition, so there is no
+    # example to show. The per-column counts belong in `detail`, where they are
+    # labelled as counts - reported as samples they render as "e.g.
+    # order_zipcode=155,679", which reads as a zipcode of 155,679.
+    return len(df) * len(rule.columns), total, detail, []
 
 
 def _check_unique(rule: Rule, df: pd.DataFrame, _: dict[str, pd.DataFrame]):

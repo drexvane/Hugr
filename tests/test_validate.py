@@ -61,6 +61,17 @@ def test_not_null_counts_null_cells(df):
     assert not r.passed
 
 
+def test_not_null_names_the_columns_but_offers_no_examples(df):
+    """A null has no example value, so the per-column counts are not samples.
+
+    Reported as samples they render as "e.g. name=1" in the alert and under
+    "examples:" in the report, which reads as a name whose value is 1.
+    """
+    r = check(rule(type="not_null", columns=["name", "qty"]), df)
+    assert r.detail == "nulls: name=1, qty=1"
+    assert r.samples == []
+
+
 def test_not_null_passes_on_complete_columns(df):
     assert check(rule(type="not_null", columns=["id"]), df).passed
 
@@ -255,13 +266,15 @@ def test_report_records_the_pinned_count_and_the_rationale(df, tmp_path):
     json.loads(json.dumps(payload, default=str))
 
 
-def test_run_writes_both_reports(mini_raw, mini_config, mini_rules, tmp_path):
+def test_run_writes_both_reports(mini_raw, mini_config, mini_rules, reports,
+                                 tmp_path):
     from dtp import clean as clean_mod
 
     results, _, _ = clean_mod.run(raw_dir=mini_raw, out_dir=tmp_path / "clean",
-                                  config_path=mini_config)
+                                  config_path=mini_config, reports_dir=reports)
     frames = {r.table: r.df for r in results}
-    report, paths = validate_mod.run(rules_path=mini_rules, tables=frames)
+    report, paths = validate_mod.run(rules_path=mini_rules, tables=frames,
+                                     reports_dir=reports)
     assert paths["markdown"].exists() and paths["json"].exists()
     assert report.counts["rules"] == 10
     assert report.ok, report.verdict()

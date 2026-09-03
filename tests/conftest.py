@@ -217,3 +217,15 @@ def mini_rules(tmp_path: Path) -> Path:
     path = tmp_path / "validation_rules.yml"
     path.write_text(MINI_VALIDATION, encoding="utf-8")
     return path
+
+
+@pytest.fixture
+def reports(tmp_path: Path) -> Path:
+    """Where a test's reports go.
+
+    Every `run()` writes a markdown and a JSON report, and by default that is the
+    repository's own `reports/`. A test that let it default would overwrite the
+    real reports with seven rows of fixture data - and the next person to read
+    them would have no way of knowing. Pass this to any `run()` under test.
+    """
+    return tmp_path / "reports"

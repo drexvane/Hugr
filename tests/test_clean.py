@@ -253,10 +253,11 @@ def test_dropped_columns_are_gone_and_recorded(cleaned):
     assert result.spec.drop_reasons["Notes"].startswith("Free text")
 
 
-def test_run_writes_parquet_and_reports(mini_raw, mini_config, tmp_path):
+def test_run_writes_parquet_and_reports(mini_raw, mini_config, reports, tmp_path):
     out = tmp_path / "clean"
     results, problems, paths = clean_mod.run(
-        raw_dir=mini_raw, out_dir=out, config_path=mini_config)
+        raw_dir=mini_raw, out_dir=out, config_path=mini_config,
+        reports_dir=reports)
     assert len(results) == 1
     assert (out / "mini.parquet").exists()
     assert (out / "mini__rejects.parquet").exists()
@@ -268,11 +269,11 @@ def test_run_writes_parquet_and_reports(mini_raw, mini_config, tmp_path):
     assert len(back) == 7
 
 
-def test_run_is_idempotent(mini_raw, mini_config, tmp_path):
+def test_run_is_idempotent(mini_raw, mini_config, reports, tmp_path):
     first = clean_mod.run(raw_dir=mini_raw, out_dir=tmp_path / "a",
-                          config_path=mini_config)[0][0]
+                          config_path=mini_config, reports_dir=reports)[0][0]
     second = clean_mod.run(raw_dir=mini_raw, out_dir=tmp_path / "b",
-                           config_path=mini_config)[0][0]
+                           config_path=mini_config, reports_dir=reports)[0][0]
     pd.testing.assert_frame_equal(first.df, second.df)
 
 
