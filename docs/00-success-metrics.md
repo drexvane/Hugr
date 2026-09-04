@@ -17,12 +17,18 @@ proposal column with a signed-off number, or accept the proposal explicitly.
 
 ## Dashboard (gates Phase 4)
 
-| Metric | Proposed | Basis |
-|---|---|---|
-| First meaningful render | **< 2 s** on the demo machine | Below ~2 s an interaction feels immediate; a judge or stakeholder clicking through will notice anything slower. |
-| Filter / drill-down response | **< 500 ms** | Interactions should not need a spinner. Achievable because DuckDB queries local Parquet. |
-| Every stakeholder question answerable | **100% of the agreed question list** | The question-to-view map in Phase 2.1 defines the list; anything unmapped is out of scope, not a partial pass. |
-| Known-anomaly test | **flags the seeded anomaly, 0 false positives on the fixture** | Roadmap 2.3 "done when". |
+Phase 2 is built, so the first two rows now carry a measurement beside the
+proposal. Both were taken against snapshot `20260903T224815` (647,247 rows, local
+disk) through `streamlit.testing.v1.AppTest`, which excludes browser paint;
+`docs/02-dashboard-design.md` (27–28) has the per-view table and the trade-off
+behind the one miss.
+
+| Metric | Proposed | Measured | Basis |
+|---|---|---|---|
+| First meaningful render | **< 2 s** on the demo machine | 1.19 s | Below ~2 s an interaction feels immediate; a judge or stakeholder clicking through will notice anything slower. |
+| Filter / drill-down response | **< 500 ms** | 128 ms to filter, 25–189 ms to switch view, **525 ms** to switch to the funnel at product grain | Interactions should not need a spinner. Achievable because DuckDB queries local Parquet. |
+| Every stakeholder question answerable | **100% of the agreed question list** | 6 of the 6 mapped questions have a view, and a test fails if a view's question and the map disagree — but the list itself is still unconfirmed | The question-to-view map in Phase 2.1 defines the list; anything unmapped is out of scope, not a partial pass. |
+| Known-anomaly test | **flags the seeded anomaly, 0 false positives on the fixture** | both hold: `test_the_injected_spike_is_flagged_and_named_as_a_month` finds exactly one, `test_a_flat_window_flags_nothing` finds none | Roadmap 2.3 "done when". |
 
 ## AI agent (gates Phase 4)
 

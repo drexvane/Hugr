@@ -3,11 +3,11 @@
 Messy data → clean data → dashboard → AI query agent. Roadmap and phase gates in
 [`project_roadmap.md`](project_roadmap.md).
 
-**Phase 1 is built, tested, and running against real data**: audit (1.1),
-cleaning and validation (1.2), and the automated pipeline with versioning, a data
-dictionary and alerts (1.3). Every number below comes from the DataCo Smart
-Supply Chain dataset in [`dataset/`](dataset) — 180,519 order lines and 469,977
-web access-log rows.
+**Phases 1 and 2 are built, tested, and running against real data**: audit (1.1),
+cleaning and validation (1.2), the automated pipeline with versioning, a data
+dictionary and alerts (1.3), and a six-view dashboard over a semantic metric layer
+(2.1–2.3). Every number below comes from the DataCo Smart Supply Chain dataset in
+[`dataset/`](dataset) — 180,519 order lines and 469,977 web access-log rows.
 
 ## Quick start
 
@@ -20,7 +20,13 @@ pip install -e .                    # puts `dtp` on PATH
 dtp pipeline --raw dataset
 ```
 
+```bash
+streamlit run dashboard/app.py
+```
+
 Without installing, `PYTHONPATH=src python -m dtp.cli <command>` is equivalent.
+The dashboard needs the `dashboard` extra (`pip install -e ".[dashboard]"`) if you
+skipped `requirements.txt`, and a published snapshot to read.
 
 One command, five stages. A real run over the shipped dataset:
 
@@ -205,7 +211,69 @@ Both are argued out in
 along with the joinability consequence: **the two tables only join under
 casefolding** — the access log is lowercase where the fact table is Title Case, so
 a literal join returns zero rows. The referential rules fold case and prove the
-join is sound; making that easier in the clean data is a Phase 2 item.
+join is sound. Phase 2 resolved where the fold belongs: `warehouse.py` registers
+views that add `*_key` columns beside the originals, so one definition serves every
+consumer and the snapshots stay a faithful typed copy of what the source emitted.
+
+## Dashboard
+
+```bash
+streamlit run dashboard/app.py
+```
+
+Six views, each answering one question, over the newest snapshot (older ones are
+selectable). Every figure is gated: cancelled and suspected-fraud lines carry full
+money values and a delivery delay for shipments that never happened, so the metric
+layer excludes them and the overview states the $1.57M difference once, explicitly.
+
+| View | Question | What is on it |
+|---|---|---|
+| Overview | Are we growing, and can I trust this number? | gated KPI row; revenue and profit by month with outlier months ringed; period-over-period; biggest movers |
+| Delivery | Where are we late, by how much, is it worsening? | on-time rate as market × shipping mode; a bar per delay day; monthly late-rate trend |
+| Profitability | What earns money rather than merely selling? | discount against margin, sized by revenue; profit by department with revenue behind it; each category against its own department; products losing money |
+| Geography & segment | Which markets and segments deserve attention? | revenue and margin down market → region → country; revenue over time per place; segment mix |
+| Funnel | Does traffic convert, and what is looked at but not bought? | views against orders per product; viewed-never-ordered and ordered-never-viewed |
+| Data health | Did the last load pass, and what changed? | validation verdict, alerts ranked critical→info, snapshot history, diff against the previous snapshot |
+
+Three things it does that a chart library does not give you for free:
+
+- **Outlier months are found, not eyeballed** — robust z-score on median and MAD,
+  flagged past 3.5. Not mean and σ, because one extreme month inflates σ and hides
+  itself, which is the case the feature exists for.
+- **Every panel carries one sentence computed from the frame that panel plots.** A
+  caption cannot contradict the chart beside it. No model is involved in Phase 2:
+  generated prose next to a chart is an unchecked claim until Phase 3 builds the
+  guardrail that verifies its numbers.
+- **It says when a comparison is not safe to make.** In this extract `market` is
+  very nearly a period — 26 of 37 months hold exactly one — so the geography view
+  says so, and from Oct 2017 an order carries one line where it previously carried
+  three, so the overview warns that monthly totals fall across that boundary for a
+  reason that is not commercial.
+
+Measured on the shipped snapshot, without a browser in the loop: 1.19 s to first
+render against the 2 s target in
+[`docs/00-success-metrics.md`](docs/00-success-metrics.md), 128 ms to apply a
+filter, 25–189 ms to switch view — and 525 ms to switch to the funnel at product
+grain, which is the one number over target. 423 ms of it is folding a join key
+466,728 times, per query, because snapshots are registered as DuckDB views rather
+than materialised. Materialising fixes it and moves a second onto first render, so
+it was measured and rejected rather than left unexamined.
+
+No authentication, and that is a recorded decision rather than an oversight: this
+is a local process reading local Parquet. No view surfaces a customer name, street
+or client IP, and geography stops at city level — but that is a display choice, not
+an access control, and the clean data carries all three. Hosting it is a Phase 4
+decision that inherits an access-control task.
+[`docs/02-dashboard-design.md`](docs/02-dashboard-design.md) has the whole
+argument, including what the build changed.
+
+The layering is the part worth copying: `warehouse.py` owns all SQL, `metrics.py`
+is the only module that writes analytical SQL and carries the gate with each
+metric, `insights.py` writes none, `charts.py` returns Plotly figures and imports
+no Streamlit, `dtp.dashboard.views` returns a whole screen as values, and
+`dashboard/app.py` only places them. Tests fail if the last two boundaries are
+crossed — which is what lets Phase 3's agent reuse a view instead of reimplementing
+it.
 
 ## Layout
 
@@ -217,10 +285,12 @@ data/versions/   timestamped snapshots, each with a manifest
 data/_synthetic/ generated fixture with known defects
 docs/            decision records + the generated data dictionary
 reports/         generated cleaning, validation, alert, pipeline and audit output
-src/dtp/         clean, validate, versioning, dictionary, monitoring, pipeline,
-                 profile, schema_map, risks, io_utils, cli
+src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
+                 pipeline, profile, schema_map, risks, io_utils, cli
+                 phase 2: warehouse, metrics, insights, charts, dashboard/views
+dashboard/       app.py — Streamlit placement only, importing the view layer
 scripts/         make_synthetic_messy.py
-tests/           252 tests
+tests/           503 tests
 ```
 
 ## Tests
@@ -229,10 +299,13 @@ tests/           252 tests
 python -m pytest
 ```
 
-252 tests, no network, and no dependency on the real dataset — everything runs
+503 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
-hand-built frames. By module: monitoring 44, clean 37, profile 37, pipeline 28,
-validate 27, dictionary 26, versioning 22, schema_map 20, risks 11.
+hand-built frames. By module: insights 74, metrics 58, charts 53, views 47,
+monitoring 44, clean 37, profile 37, pipeline 28, validate 27, dictionary 26,
+versioning 22, schema_map 20, warehouse 19, risks 11. Phase 2's own layers hold
+251 of them, which is the ratio the layering was for: a boundary nobody tests is a
+convention, not a boundary.
 
 The ones that assert judgement rather than plumbing:
 
@@ -247,6 +320,30 @@ The ones that assert judgement rather than plumbing:
 - a vendor description that merely restates the column name counting as *absent*
 - the profiler staying quiet where it should: no IQR outliers on a five-row
   column, no "looks like an identifier" on a numeric one
+
+And the dashboard's, which are mostly about what a layer is *not* allowed to do:
+
+- the gate travelling with the metric rather than the query, and every gated
+  metric being a single aggregate call — DuckDB's `FILTER` binds to one call, so a
+  composite expression would silently count ungated rows. The registry refuses
+  that shape at construction rather than at read time.
+- `charts.py` and `dtp.dashboard.views` importing no Streamlit, and `app.py`
+  calling no aggregate, no `sql`, no `sum` — checked by walking the AST, because
+  Phase 3's agent reuses these layers and cannot bring a web server with it
+- no view exposing a personal column, under either the raw name or the prose
+  heading it would be displayed with; and the same columns being unavailable as
+  dimensions one layer down
+- a figure surviving the JSON round trip the agent will use
+- the funnel's totals coming from one query rather than a summed column, which
+  overstates orders by 29% at product grain
+- a chart declining to draw itself where no chart would be honest, an empty
+  heatmap cell staying blank while a zero stays zero, and a truncated chart
+  counting what it did not draw
+- the snapshot picker opening on the newest snapshot, and the oldest one offering
+  no diff rather than wrapping round to the newest
+- a meta-test that fails if a new sentence builder is added without joining the
+  sweep that checks all of them, and a test requiring each view's question to
+  appear in `docs/02` in the same words
 
 ## Environment notes
 
@@ -263,6 +360,7 @@ what is still open.
 | 1.1 — Audit & assessment | done, tested |
 | 1.2 — Cleaning & standardization | done, tested; 51 rules, all passing on the real data |
 | 1.3 — Pipeline & documentation | done, tested; one command, versioned snapshots, 100% field coverage, alerts |
-| 2 — Innovative dashboard | not started |
+| 2.1–2.3 — Dashboard: architecture, build, innovation layer | done, tested; six views, 251 tests over the Phase 2 layers |
+| 2.4 — Polish & review | measured: 1.19 s first render against a 2 s target, 25–525 ms per interaction against 500 ms. **Design review and stakeholder sign-off want a stakeholder** |
 | 3 — AI query agent | not started |
 | 4 — Testing, polish & launch | not started |

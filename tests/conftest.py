@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from dtp import io_utils, profile
@@ -229,3 +230,170 @@ def reports(tmp_path: Path) -> Path:
     them would have no way of knowing. Pass this to any `run()` under test.
     """
     return tmp_path / "reports"
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2 fixture: a snapshot small enough to compute by hand.
+#
+# The warehouse, metric, insight and chart layers all read a snapshot, so they get
+# one built here rather than the real 647,247-row extract, which is gitignored.
+# Every trap those layers exist to handle is present exactly once, and every
+# number a test asserts is derivable from the table below with a calculator:
+#
+#   * two cancelled lines carrying full money and a delay, so a missing gate
+#     changes revenue, profit, on-time rate and average delay all at once;
+#   * labels that differ between the two tables by case, by a trailing space and
+#     by punctuation ('Indoor/Outdoor Games' against 'indoor outdoor games'), so
+#     a join on the raw labels returns fewer rows than a join on the folded keys;
+#   * one label pair that is genuinely two different things, so the fold is shown
+#     not to over-reach;
+#   * a monthly revenue series that is flat except for one month at 3x, which is
+#     the design doc's stated acceptance criterion for anomaly flagging;
+#   * one category above and one below its department's margin;
+#   * a product with page views and no orders at all.
+# --------------------------------------------------------------------------- #
+
+# The 2017 months are the anomaly fixture and nothing else: 4 lines a month at
+# $100, except one month at 3x. Everything that would disturb that series - the
+# benchmark pair, the loss-maker, the cancelled lines, the split label - is dated
+# 2016, so `timeseries(..., date_from="2017-01-01")` is flat-plus-one-spike exactly
+# and the unfiltered series still exercises a two-year window.
+_FLAT_MONTHS = ["2017-01", "2017-02", "2017-03", "2017-04", "2017-05", "2017-06",
+                "2017-08", "2017-09", "2017-10", "2017-11", "2017-12"]
+_SPIKE_MONTH = "2017-07"
+
+
+def _fixture_order_items() -> "pd.DataFrame":
+    """One row per order line, built so every total is a round number."""
+    rows: list[dict] = []
+    oid, item = 1000, 5000
+
+    def add(month: str, sales: float, profit: float, discount: float,
+            dept: str, cat: str, prod: str, *, delay: int, recognised: bool,
+            market: str = "Europe", mode: str = "Standard Class",
+            status: str = "COMPLETE", segment: str = "Consumer",
+            lines: int = 1, quantity: int = 1) -> None:
+        nonlocal oid, item
+        oid += 1
+        for _ in range(lines):
+            item += 1
+            rows.append({
+                "order_item_id": item, "order_id": oid,
+                "order_date": pd.Timestamp(month + "-15"),
+                "shipping_date": pd.Timestamp(month + "-15") + pd.Timedelta(days=4),
+                "order_item_sales": sales, "order_item_profit": profit,
+                "order_item_discount": discount, "order_item_quantity": quantity,
+                "order_status": status, "shipping_mode": mode, "market": market,
+                "order_region": "Western Europe", "order_country": "France",
+                "customer_segment": segment, "customer_city": "Paris",
+                "payment_type": "TRANSFER", "delivery_status": "Shipping on time",
+                "department_name": dept, "category_name": cat, "product_name": prod,
+                "department_id": 1 + (dept == "Fan Shop"),
+                "category_id": 10 + len(cat) % 7, "product_id": 100 + len(prod) % 11,
+                "shipping_delay_days": delay,
+                "days_shipping_scheduled": 4, "days_shipping_real": 4 + delay,
+                "is_revenue_recognised": recognised,
+                "is_shipment_valid": recognised,
+            })
+
+    # The flat baseline: 4 lines a month at $100, $10 profit, on time.
+    for month in _FLAT_MONTHS:
+        for _ in range(4):
+            add(month, 100.0, 10.0, 5.0, "Apparel", "Women's Apparel",
+                "Nike Polo", delay=0, recognised=True)
+    # The spike: 12 lines, so the month totals $1,200 against a $400 median.
+    for _ in range(12):
+        add(_SPIKE_MONTH, 100.0, 10.0, 5.0, "Apparel", "Women's Apparel",
+            "Nike Polo", delay=0, recognised=True)
+
+    # Margin against the parent department. Apparel is 10% (100 sales, 10 profit);
+    # these two sit either side of Fan Shop's own 14% inside Fan Shop.
+    add("2016-03", 400.0, 80.0, 0.0, "Fan Shop", "Indoor/Outdoor Games",
+        "Dart Board", delay=2, recognised=True, mode="First Class")     # 20%
+    add("2016-03", 600.0, 60.0, 0.0, "Fan Shop", "Sporting Goods",
+        "Bowling Ball", delay=3, recognised=True, mode="First Class")   # 10%
+
+    # A loss-maker, and a two-line order so lines_per_order is not 1.0 everywhere.
+    add("2016-04", 200.0, -50.0, 100.0, "Fan Shop", "Sporting Goods",
+        "Clearance Bat", delay=-2, recognised=True, lines=2, market="LATAM")
+
+    # One recognised Nike Polo order inside the log's window, so the funnel's
+    # viewed-never-ordered list holds exactly the product that has never sold.
+    add("2016-04", 100.0, 10.0, 5.0, "Apparel", "Women's Apparel", "Nike Polo",
+        delay=0, recognised=True)
+
+    # The gate's whole reason: full money, a real delay, never recognised.
+    add("2016-05", 5000.0, 500.0, 0.0, "Apparel", "Women's Apparel", "Nike Polo",
+        delay=4, recognised=False, status="CANCELED")
+    add("2016-05", 3000.0, 300.0, 0.0, "Fan Shop", "Sporting Goods",
+        "Bowling Ball", delay=4, recognised=False, status="SUSPECTED_FRAUD")
+
+    # An 'Electronics' split in two, which the fold must NOT merge with the log's
+    # single 'electronics'.
+    add("2016-06", 250.0, 25.0, 0.0, "Technology", "Electronics (Footwear)",
+        "Smart Watch", delay=1, recognised=True, market="Pacific Asia")
+    add("2016-06", 350.0, 35.0, 0.0, "Technology", "Electronics (Outdoors)",
+        "Trail Camera", delay=1, recognised=True, market="Pacific Asia")
+
+    return pd.DataFrame(rows)
+
+
+def _fixture_access_logs() -> "pd.DataFrame":
+    """Page views, spelling every label the way the real log does: lower, with a
+    trailing space on the department, and no punctuation in 'indoor outdoor'.
+
+    Dated 2016-03 to 2016-06, which is where the non-baseline orders are, so the
+    funnel window derived from this table overlaps orders instead of covering the
+    flat 2017 series. That mirrors the real extract, where the log covers five of
+    the fact table's thirty-seven months.
+    """
+    views = [
+        # (product, category, department, n)
+        ("nike polo", "women's apparel", "apparel ", 30),
+        ("dart board", "indoor outdoor games", "fan shop ", 20),
+        ("never sold hat", "featured shops", "fan shop ", 15),   # views, no orders
+        ("smart watch", "electronics", "technology ", 10),       # the split label
+    ]
+    rows = []
+    log_id = 1
+    span = 119                      # 2016-03-01 + 119 days = 2016-06-28
+    for product, category, department, count in views:
+        for i in range(count):
+            offset = round(i * span / max(count - 1, 1))
+            rows.append({
+                "access_log_id": log_id,
+                "viewed_at": pd.Timestamp("2016-03-01") + pd.Timedelta(days=offset),
+                "product_name": product, "category_name": category,
+                "department_name": department,
+                "client_ip": "10.0.0." + str(1 + log_id % 250),
+                "request_url": "/shop/" + product.replace(" ", "-"),
+            })
+            log_id += 1
+    return pd.DataFrame(rows)
+
+
+@pytest.fixture(scope="session")
+def snapshot_dir(tmp_path_factory) -> Path:
+    """A written snapshot directory holding the two fixture tables."""
+    from dtp import versioning
+
+    versions = tmp_path_factory.mktemp("versions")
+    versioning.write_snapshot(
+        {"order_items": _fixture_order_items(),
+         "access_logs": _fixture_access_logs()},
+        source_dir=Path("fixture"),
+        versions_dir=versions,
+        validation={"status": "PASS", "verdict": "PASS - every rule held",
+                    "rules": 2, "passed": 2, "failed": 0, "warned": 0},
+        version_id="20200101T000000",
+    )
+    return versions
+
+
+@pytest.fixture
+def wh(snapshot_dir: Path):
+    """An open warehouse over the fixture snapshot, closed after the test."""
+    from dtp import warehouse
+
+    with warehouse.open_warehouse(versions_dir=snapshot_dir) as opened:
+        yield opened

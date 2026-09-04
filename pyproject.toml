@@ -19,7 +19,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dashboard = ["plotly>=6.0", "streamlit>=1.4", "Jinja2>=3.1"]
+# streamlit>=1.51: `st.plotly_chart(width="stretch")` landed there (1.49 for
+# `st.dataframe`). `dashboard/app.py` uses both, and on an older Streamlit they
+# raise rather than degrade - the old spelling, `use_container_width`, is removed
+# after 2025-12-31, so there is no floor that satisfies both.
+dashboard = ["plotly>=6.0", "streamlit>=1.51", "Jinja2>=3.1"]
 agent = ["anthropic>=1.0"]
 dev = ["pytest>=8.0"]
 

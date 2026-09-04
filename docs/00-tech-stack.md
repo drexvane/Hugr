@@ -25,7 +25,7 @@ versions.
 | Clean storage | Parquet snapshots in `data/versions/` | 4. Typed, compressed, self-describing, and readable by both DuckDB and pandas without a server. |
 | Query layer | DuckDB over Parquet | 5. Phase 3 needs real SQL for the agent to generate against. DuckDB gives that with zero infrastructure, and reads the Parquet files directly. 6. A Postgres instance would add hosting and credentials for no analytical gain at this size. |
 | Validation | small in-repo rule engine | 7. Great Expectations is the obvious library and is too heavy for this: it brings its own config format, store layout and CLI. Roadmap 1.2 needs range / required / referential checks that fail loudly — that is a few hundred lines we fully control. |
-| Dashboard | *provisional:* Streamlit + Plotly | 8. Already installed, and one language across the whole stack. Chosen because Phase 2's "innovation layer" (anomaly flags, comparative views, narrative annotations) is mostly data work, not UI work. **Revisit at Phase 2 kickoff:** if the dashboard needs to look bespoke rather than functional, a React front end over a FastAPI endpoint is the alternative, and Node 24 is present for it. |
+| Dashboard | **Streamlit + Plotly** — decided at Phase 2 kickoff | 8. Already installed, and one language across the whole stack. Chosen because Phase 2's "innovation layer" (anomaly flags, comparative views, narrative annotations) is mostly data work, not UI work. **Resolved in `02-dashboard-design.md`:** the deciding reason turned out to be roadmap 3.2, which requires the Phase 3 agent to *reuse* the dashboard's chart generation. A React front end would put the charts behind an HTTP contract the agent then has to reimplement or call. The escape hatch survives — a Plotly figure serialises to JSON that `plotly.js` renders natively, so moving to React later is a rendering change, not a rewrite of the analysis. The chart and view layers import no Streamlit, and two tests fail if that changes. |
 | AI agent | Claude via the official `anthropic` SDK | 9. Roadmap 3.1 wants text → intent → **scoped** SQL → chart. That is tool-use against a fixed schema, which is exactly what the SDK's tool calling does. 10. Exact model id is chosen at Phase 3 kickoff against the current model list rather than hard-coded here, where it would go stale. |
 | Tests | pytest | 11. Roadmap "done when" criteria are only real if they are executable. Every deliberate defect in the fixture has a test asserting the pipeline still catches it. |
 
@@ -44,6 +44,5 @@ versions.
 
 | Question | Blocks | Owner |
 |---|---|---|
-| Streamlit vs React front end | Phase 2 build | dashboard dev + stakeholder, on how polished the demo must look |
 | Where this is deployed | Phase 4 launch | whoever owns hosting |
 | Claude model tier and per-query budget | Phase 3 | whoever owns the API spend |
