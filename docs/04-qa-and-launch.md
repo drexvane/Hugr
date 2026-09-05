@@ -3,11 +3,12 @@
 Phase 4 asks for five things: end-to-end QA, accuracy benchmarking, load testing,
 user acceptance testing, and launch. **Three are done and two cannot be finished by
 this team** — UAT needs users, and launch needs a decision about whether a shared
-secret is enough protection for this extract. Since that decision was recorded, two
+secret is enough protection for this extract. Since that decision was recorded, three
 things have been added towards it: CI (`.github/workflows/ci.yml`) runs the suite and
-the CLI gates on every push, and the dashboard has an optional password gate so a
-hosted demo need not be open. Neither closes the launch item. This file records what
-was measured, what it found, and what the open ones need from whom.
+the CLI gates on every push, the dashboard has an optional password gate so a hosted
+demo need not be open, and the UAT session is written out below so it needs a
+participant rather than preparation. None of them closes an open item. This file
+records what was measured, what it found, and what the open ones need from whom.
 
 Everything below is reproducible:
 
@@ -124,11 +125,74 @@ Concurrency scales sub-linearly rather than serially — eight readers cost 3.2�
 reader, not 8× — because DuckDB parallelises across cursors. Eight is a guess at peak
 for a demo; `--readers N` measures any other number.
 
+## The UAT session, ready to run
+
+UAT is blocked on people, not on preparation, so the preparation is here. Nobody has
+watched a real user ask this agent anything, and the failure this is looking for is
+not a crash — the platform refuses cleanly and its numbers are checked. It is
+**a user asking something reasonable that gets a refusal**, because that is the gap
+between what the registry defines and what people actually want to know, and no
+amount of internal testing finds it. The 32-question set was written by the people who
+built the thing.
+
+**Setup.** One facilitator, one participant, 30 minutes, the dashboard on the demo
+machine. `DTP_DASHBOARD_PASSWORD` unset, so nothing is in the way. Have
+`reports/uat-log.md` open — the template is at the bottom of this section.
+
+**Rules for the facilitator.** Say nothing after handing over the first task. Do not
+explain what the platform can do, do not suggest phrasings, and do not touch the
+keyboard. The single most valuable data point is what someone types before they have
+learned what works, and every hint destroys one.
+
+**The five tasks**, in this order, worded as outcomes rather than instructions so the
+participant chooses the words:
+
+1. *"Find out which part of the business is making the least money."* Any view or
+   question is fair. Watching whether they reach for the Profitability screen or the
+   Ask box is the first thing worth knowing.
+2. *"Now ask the same thing in words."* The point is their phrasing, not ours.
+3. *"Follow that up — narrow it down somehow."* Tests whether session memory is
+   discoverable without being told it exists.
+4. *"Ask something you actually want to know about this business."* The task most
+   likely to produce a refusal, and the most important minute of the session.
+5. *"Ask something you expect it to get wrong."* People probe differently than
+   builders do; this is where a guardrail either reads as deliberate or as broken.
+
+**What to record**, per task: the words typed, verbatim; answered or refused, and with
+which code; whether the participant believed the answer; and whether they noticed the
+caption saying what actually ran. Verbatim matters more than the summary — a refusal
+on "which customers churned" and one on "who left us" are the same code and different
+problems.
+
+**What counts as a critical issue** (roadmap 4's "critical issues resolved"): a wrong
+number, a refusal on a question the registry could answer with one more metric or
+dimension, or a participant trusting a figure the verifier had withheld. A refusal on
+something genuinely out of scope is not a defect — it is the design working, and the
+fallback wording is what to judge instead.
+
+**The log.** One file, `reports/uat-log.md`, this shape, one block per participant:
+
+```markdown
+## Participant N — role, date
+
+| # | Typed verbatim | Outcome | Believed it? | Noticed the caption? |
+|---|---|---|---|---|
+| 1 | ... | answered / refused (`code`) | yes / no / unsure | yes / no |
+
+Critical issues: ...
+Registry gaps this session revealed: ...
+Quotes worth keeping: ...
+```
+
+Sign-off belongs at the bottom of that file, with a name and a date, because
+`docs/00-success-metrics.md` still has three empty sign-off rows and this is one of
+them.
+
 ## What needs a person
 
 | Item | Who | What is blocked, and what happens meanwhile |
 |---|---|---|
-| **User acceptance testing** | the intended users | Roadmap 4 wants UAT sessions and structured feedback. Nobody has watched a real user ask this agent a question. The reviewed question set is 32 questions written by the people who built it, which is a substitute for that, not a replacement. |
+| **User acceptance testing** | the intended users | Roadmap 4 wants UAT sessions and structured feedback. Nobody has watched a real user ask this agent a question. The reviewed question set is 32 questions written by the people who built it, which is a substitute for that, not a replacement. The session itself is written out above — five tasks, what to record, what counts as critical — so what is missing is a participant and half an hour, not preparation. |
 | **Launch** | whoever owns the data | A shared-secret gate now exists and is off unless `DTP_DASHBOARD_PASSWORD` is set (`src/dtp/dashboard/auth.py`), so a hosted demo need not be open. **That is not the access-control task, it is the smallest step that unblocks hosting at all.** There are no users, so nothing can be revoked or attributed to one person, and the clean data still carries customer names, street addresses and 3,340 client IPs — no view surfacing them is a display choice enforced by tests, not a control. Hosting this data for anyone outside the team wants an identity provider in front of it, or a decision not to host this extract. |
 | **The live model run** | whoever owns the API spend | `scripts/agent_smoke.py`, one command, writes a log. Fills in the one blank in the accuracy table. |
 | **The success metrics themselves** | whoever signs off Phase 0 | Every number in `docs/00-success-metrics.md` is still a proposal with a basis, including the 90% this phase is measured against. |
