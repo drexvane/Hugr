@@ -8,12 +8,14 @@ without a browser; if a number here is wrong, it is wrong there. The Ask screen 
 the same arrangement one layer over: `dtp.agent` returns an `Answer`, and an `Answer`
 has a view's shape, so rendering it is placement too.
 
-No authentication. This binds to localhost and reads local Parquet, which is
-adequate for a demo on one machine and not adequate the moment it is hosted: the
-clean data carries customer names, street addresses and 3,340 client IPs. No view
-surfaces any of those columns and geography stops at city level, but that is a
-choice about display, not an access control. `docs/02-dashboard-design.md` records
-the decision and Phase 4 owns it.
+No authentication by default. This binds to localhost and reads local Parquet, which
+is adequate for a demo on one machine. Setting `DTP_DASHBOARD_PASSWORD` turns on a
+shared-secret gate so the demo can be hosted without being open — read
+`dtp.dashboard.auth` before trusting it, because a password is not identity and this
+data carries customer names, street addresses and 3,340 client IPs. No view surfaces
+any of those columns and geography stops at country, but that is a choice about
+display enforced by tests, not an access control.
+`docs/02-dashboard-design.md` records the decision.
 
 The Ask screen is the one thing here that talks to a third party, and only when a key
 is present: it sends the question, the registry and the head of an aggregated frame.
@@ -36,6 +38,7 @@ import streamlit as st                                        # noqa: E402
 
 from dtp import metrics as M                                  # noqa: E402
 from dtp import warehouse                                     # noqa: E402
+from dtp.dashboard import auth                                # noqa: E402
 from dtp.dashboard import views as V                          # noqa: E402
 
 st.set_page_config(page_title="DataCo supply chain", page_icon="\N{PACKAGE}",
@@ -137,9 +140,10 @@ def _sidebar() -> tuple[str, M.Filters, int, str]:
 
 
 def _privacy_note() -> None:
-    st.sidebar.caption("Local process, local Parquet, no login. Customer names, "
-                       "street addresses and client IPs are in the data and are "
-                       "not shown on any view; that is a display choice, not an "
+    entry = ("password-gated" if auth.required() else "no login")
+    st.sidebar.caption("Local process, local Parquet, " + entry + ". Customer "
+                       "names, street addresses and client IPs are in the data and "
+                       "are not shown on any view; that is a display choice, not an "
                        "access control.")
 
 
@@ -292,7 +296,56 @@ def _ask_screen(wh, version_id: str) -> None:
             _render_answer(earlier)
 
 
+# --------------------------------------------------------------------------- #
+# the gate
+#
+# Placement only, again: `dtp.dashboard.auth` decides whether a string is correct and
+# whether the configured secret is worth anything. Off entirely unless an operator
+# sets DTP_DASHBOARD_PASSWORD, so a local run is exactly what it was.
+# --------------------------------------------------------------------------- #
+
+def _gate() -> None:
+    """Stop the script unless the visitor knows the shared secret.
+
+    Before the sidebar, not after: the snapshot list and the filter boxes are made of
+    real market, segment and product values, so a page that renders the controls and
+    hides only the charts has already answered a question.
+    """
+    if not auth.required():
+        return
+    problem = auth.weakness()
+    if problem:
+        # Refusing to serve is the point. A gate the operator believes in and that
+        # accepts "1234" is worse than no gate at all.
+        st.error("The dashboard password is misconfigured, so nothing is being "
+                 "served.\n\n" + problem)
+        st.stop()
+    if st.session_state.get("authed"):
+        return
+
+    st.title("DataCo supply chain", anchor=False)
+    st.caption("This deployment is password-protected. Ask whoever set it up.")
+    with st.form("gate"):
+        supplied = st.text_input("Password", type="password")
+        sent = st.form_submit_button("Enter", type="primary")
+    tries = int(st.session_state.get("tries", 0))
+    if tries >= auth.MAX_ATTEMPTS:
+        st.error("Too many attempts in this session. Reload to try again.")
+        st.stop()
+    if sent:
+        if auth.verify(supplied):
+            st.session_state["authed"] = True
+            st.session_state["tries"] = 0
+            st.rerun()
+        st.session_state["tries"] = tries + 1
+        # No detail and nothing logged: which half was wrong is information, and a
+        # log of failed passwords is a log of passwords.
+        st.error("Not that.")
+    st.stop()
+
+
 def main() -> None:
+    _gate()
     version_id, filters, min_lines, key = _sidebar()
     wh = _open(version_id)
 

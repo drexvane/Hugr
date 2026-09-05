@@ -1,15 +1,18 @@
 # QA, Performance and Launch (Phase 4)
 
 Phase 4 asks for five things: end-to-end QA, accuracy benchmarking, load testing,
-user acceptance testing, and launch. **Three are done and two cannot be done by this
-team** — UAT needs users and launch needs a hosting decision that carries an
-access-control task with it. This file records what was measured, what it found, and
-what the two open ones need from whom.
+user acceptance testing, and launch. **Three are done and two cannot be finished by
+this team** — UAT needs users, and launch needs a decision about whether a shared
+secret is enough protection for this extract. Since that decision was recorded, two
+things have been added towards it: CI (`.github/workflows/ci.yml`) runs the suite and
+the CLI gates on every push, and the dashboard has an optional password gate so a
+hosted demo need not be open. Neither closes the launch item. This file records what
+was measured, what it found, and what the open ones need from whom.
 
 Everything below is reproducible:
 
 ```bash
-python -m pytest                  # 923 tests, no network, no credential
+python -m pytest                  # 948 tests, no network, no credential
 python scripts/qa_report.py       # the journeys against the real snapshot
 python scripts/agent_smoke.py     # the live model run, key-gated
 ```
@@ -126,7 +129,7 @@ for a demo; `--readers N` measures any other number.
 | Item | Who | What is blocked, and what happens meanwhile |
 |---|---|---|
 | **User acceptance testing** | the intended users | Roadmap 4 wants UAT sessions and structured feedback. Nobody has watched a real user ask this agent a question. The reviewed question set is 32 questions written by the people who built it, which is a substitute for that, not a replacement. |
-| **Launch** | whoever owns hosting | The dashboard has **no authentication**, by recorded decision (`docs/02-dashboard-design.md`): it is a local process reading local Parquet. Hosting it inherits an access-control task, because no view showing a personal column is a display choice, not a control. Nothing should be exposed to a network before that is built. |
+| **Launch** | whoever owns the data | A shared-secret gate now exists and is off unless `DTP_DASHBOARD_PASSWORD` is set (`src/dtp/dashboard/auth.py`), so a hosted demo need not be open. **That is not the access-control task, it is the smallest step that unblocks hosting at all.** There are no users, so nothing can be revoked or attributed to one person, and the clean data still carries customer names, street addresses and 3,340 client IPs — no view surfacing them is a display choice enforced by tests, not a control. Hosting this data for anyone outside the team wants an identity provider in front of it, or a decision not to host this extract. |
 | **The live model run** | whoever owns the API spend | `scripts/agent_smoke.py`, one command, writes a log. Fills in the one blank in the accuracy table. |
 | **The success metrics themselves** | whoever signs off Phase 0 | Every number in `docs/00-success-metrics.md` is still a proposal with a basis, including the 90% this phase is measured against. |
 

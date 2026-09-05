@@ -27,7 +27,10 @@ pytest.importorskip("streamlit.testing.v1")
 from streamlit.testing.v1 import AppTest                          # noqa: E402
 
 APP = Path(__file__).resolve().parents[1] / "dashboard" / "app.py"
+# The nav radio shows titles but its *value* is the view key, and `set_value` matches
+# the value. Selecting by title lands on whatever the widget falls back to.
 ASK = "Ask a question"
+ASK_KEY = "ask"
 
 
 @pytest.fixture
@@ -58,7 +61,9 @@ def ask(at, question: str):
 
 @pytest.fixture
 def asking(app):
-    return app.sidebar.radio[0].set_value(ASK).run()
+    at = app.sidebar.radio[0].set_value(ASK_KEY).run()
+    assert at.sidebar.radio[0].value == ASK_KEY
+    return at
 
 
 # --------------------------------------------------------------------------- #

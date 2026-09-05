@@ -7,9 +7,10 @@ Messy data → clean data → dashboard → AI query agent. Roadmap and phase ga
 cleaning and validation (1.2), the automated pipeline with versioning, a data
 dictionary and alerts (1.3), a six-view dashboard over a semantic metric layer
 (2.1–2.3), and an AI query agent that turns a question into a validated plan rather
-than into SQL (3.1–3.3). **Phase 4's QA, benchmarking and load testing are done** —
-what remains needs people: user acceptance testing, and a hosting decision that
-carries an access-control task with it
+than into SQL (3.1–3.3). **Phase 4's QA, benchmarking and load testing are done**, and
+CI now runs the suite and the CLI gates on every push. What remains needs people: user
+acceptance testing, and a decision on whether a shared-secret gate is enough to host
+this data — a password gate exists and is off by default, and it is not identity
 ([`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md)). Every number below comes
 from the DataCo Smart Supply Chain dataset in [`dataset/`](dataset) — 180,519 order
 lines and 469,977 web access-log rows.
@@ -248,6 +249,13 @@ consumer and the snapshots stay a faithful typed copy of what the source emitted
 streamlit run dashboard/app.py
 ```
 
+```bash
+DTP_DASHBOARD_PASSWORD=a-long-enough-secret streamlit run dashboard/app.py
+```
+
+The second form turns on the password gate — off by default, and read below before
+hosting anything with it.
+
 Six views, each answering one question, over the newest snapshot (older ones are
 selectable), plus a seventh screen that takes a question in words — see
 [AI query agent](#ai-query-agent). Every figure is gated: cancelled and
@@ -289,11 +297,21 @@ grain, which is the one number over target. 423 ms of it is folding a join key
 than materialised. Materialising fixes it and moves a second onto first render, so
 it was measured and rejected rather than left unexamined.
 
-No authentication, and that is a recorded decision rather than an oversight: this
-is a local process reading local Parquet. No view surfaces a customer name, street
-or client IP, and geography stops at city level — but that is a display choice, not
-an access control, and the clean data carries all three. Hosting it is a Phase 4
-decision that inherits an access-control task.
+No authentication by default, and that is a recorded decision rather than an
+oversight: this is a local process reading local Parquet. Setting
+`DTP_DASHBOARD_PASSWORD` (or `DTP_DASHBOARD_PASSWORD_SHA256`, if you would rather not
+keep the plaintext in a platform's secret store) turns on a shared-secret gate that
+runs before the sidebar, because the snapshot list and filter boxes are themselves
+made of real market and product values. A secret under 12 characters refuses to serve
+rather than pretending.
+
+**The gate is not access control.** There are no users, so nothing can be revoked or
+attributed to one person, and the per-session attempt cap slows a browser rather than
+a script. No view surfaces a customer name, street or client IP and geography stops at
+country level, but that is a display choice enforced by tests, not an authorisation
+boundary — the clean data carries all three. It is enough to put the demo on a host
+without leaving it open; it is not enough to host this data for anyone outside the
+team, which wants a real identity provider and is the decision still open.
 [`docs/02-dashboard-design.md`](docs/02-dashboard-design.md) has the whole
 argument, including what the build changed.
 
@@ -408,10 +426,11 @@ src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
                  pipeline, profile, schema_map, risks, io_utils, cli
                  phase 2: warehouse, metrics, insights, charts, dashboard/views
                  phase 3: agent/ — plan, tools, guard, session, client
+                 phase 4: dashboard/auth — the optional password gate
 dashboard/       app.py — Streamlit placement only, importing the view layer
 scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run),
                  qa_report.py (the journeys against the real snapshot, timed)
-tests/           925 tests
+tests/           948 tests
 ```
 
 ## Tests
@@ -420,15 +439,15 @@ tests/           925 tests
 python -m pytest
 ```
 
-925 tests, no network, and no dependency on the real dataset — everything runs
+948 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
 hand-built frames. By module: agent question set 137, agent guard 73, agent plan 61,
 insights 77, metrics 58, charts 53, views 47, monitoring 44, agent session 42,
 agent stub 39, clean 37, profile 37, pipeline 30, validate 27, dictionary 26,
-versioning 22, warehouse 21, schema_map 20, smoke script 17, dashboard Ask screen 17,
-`dtp ask` 16, end-to-end journeys 13, risks 11. Phase 2's own layers hold 256 of
-them and Phase 3's 402, which is the ratio the layering was for: a boundary nobody
-tests is a convention, not a boundary.
+dashboard auth 23, versioning 22, warehouse 21, schema_map 20, smoke script 17,
+dashboard Ask screen 17, `dtp ask` 16, end-to-end journeys 13, risks 11. Phase 2's own
+layers hold 256 of them and Phase 3's 402, which is the ratio the layering was for: a
+boundary nobody tests is a convention, not a boundary.
 
 The end-to-end module is the one that runs the journeys rather than the layers:
 raw files to a published snapshot and the gate that refuses to publish one; that
@@ -461,6 +480,11 @@ And the dashboard's, which are mostly about what a layer is *not* allowed to do:
 - `charts.py` and `dtp.dashboard.views` importing no Streamlit, and `app.py`
   calling no aggregate, no `sql`, no `sum` — checked by walking the AST, because
   Phase 3's agent reuses these layers and cannot bring a web server with it
+- the password gate refusing to serve on a secret under 12 characters, comparing in
+  constant time, and rendering *nothing* until it passes — not the charts and not the
+  sidebar, whose snapshot list and filter boxes are made of real market and product
+  values. Also that `auth.py` imports no Streamlit, never calls `print` or `open`, and
+  still contains the sentence saying it is not access control
 - no view exposing a personal column, under either the raw name or the prose
   heading it would be displayed with; and the same columns being unavailable as
   dimensions one layer down
@@ -533,4 +557,4 @@ what is still open.
 | 3.1 — Architecture & query layer | done, tested; one tool over the metric registry rather than generated SQL, twelve refusal codes each with a fallback |
 | 3.2 — Agent build | done, tested; 32 reviewed questions in `tests/agent_questions.yml`, the dashboard's own chart selection reused rather than reimplemented |
 | 3.3 — Refinement | done, tested; session memory as a plan patch, a two-layer hallucination guardrail, and `dtp ask` / a dashboard Ask screen over one `Answer`. **The end-to-end log against the real model is `scripts/agent_smoke.py` and wants whoever owns the API spend** |
-| 4 — Testing, polish & launch | QA, accuracy benchmarking and load testing done — 6 journeys, 57 checks, 0 failures against the real snapshot; see [`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md). **UAT wants users and launch wants a hosting decision, which carries the access-control task with it** |
+| 4 — Testing, polish & launch | QA, accuracy benchmarking and load testing done — 6 journeys, 57 checks, 0 failures against the real snapshot; see [`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md). CI runs the suite and the CLI gates on every push, and the dashboard has an optional password gate so a hosted demo need not be open. **UAT wants users; launch wants a decision on whether a shared secret is enough for this data, and it is not enough outside the team** |

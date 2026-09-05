@@ -145,14 +145,26 @@ unchecked claim.
 
 ## Consequences accepted
 
-- **No authentication.** The dashboard is a local Streamlit process reading local
-  Parquet; it binds to localhost and ships no login. That is adequate for a demo
-  on one machine and **not** adequate the moment it is hosted, because the clean
-  data carries customer names, street addresses and 3,340 client IPs. Phase 4
-  owns the deployment decision; whoever takes it inherits an access-control task,
-  and that is recorded here rather than discovered later.
+- **No authentication by default, and a shared-secret gate when asked for.** The
+  dashboard is a Streamlit process reading local Parquet; unset, it binds to
+  localhost and ships no login, which is adequate for a demo on one machine.
+  Setting `DTP_DASHBOARD_PASSWORD` (or `DTP_DASHBOARD_PASSWORD_SHA256`) turns on a
+  password gate that runs before the sidebar, so nothing renders first — not the
+  charts, and not the snapshot list and filter boxes, which are made of real market
+  and product values.
+
+  **That gate is not access control**, and `dtp.dashboard.auth` says so in the only
+  place an operator will read. There are no users, so nothing can be revoked or
+  attributed to one person; the per-session attempt cap slows a browser, not a
+  script; and the clean data still carries customer names, street addresses and
+  3,340 client IPs. Hosting *this* data for anyone outside the team wants a real
+  identity provider in front of it. What the gate buys is that the demo can go on a
+  host without being open, which is the smallest defensible step and the one Phase 4
+  needed. A secret shorter than 12 characters refuses to serve rather than
+  pretending: a gate the operator believes in and that accepts `1234` is worse than
+  no gate.
 - **Personal columns are not surfaced.** No view plots `customer_first_name`,
-  `customer_last_name`, `customer_street` or `client_ip`. Geography stops at city
+  `customer_last_name`, `customer_street` or `client_ip`. Geography stops at country
   level, matching the suppression the data dictionary already applies.
 - **The dashboard reads a snapshot, not the live clean directory.** It picks the
   newest `data/versions/*` by default and lets you pin an older one. A dashboard
@@ -333,7 +345,7 @@ about pre-aggregation.
 | Question | Who should decide | Consequence of leaving it |
 |---|---|---|
 | Is the assumed audience right? | a stakeholder | Every view answers a question nobody confirmed is asked. One corrected row is cheaper than a rebuild. |
-| Hosting, and therefore authentication | Phase 4 | Recorded above. The clean data carries customer names, street addresses and 3,340 client IPs; localhost is the only thing keeping them local. |
+| Hosting, and whether a shared secret is enough | whoever owns the data | A password gate exists and is off by default (see the consequences section). It keeps a passer-by out of a hosted demo. It is not identity, so it cannot be enough for anyone outside the team while the clean data carries customer names, street addresses and 3,340 client IPs. Choosing an identity provider, or choosing not to host this data at all, is the decision still open. |
 | Is the Oct 2017 break an extract artefact or a real change in how orders were placed? | whoever owns the source system | The dashboard warns and suggests per-order figures. It cannot tell the reader which of the two it is. |
 | Does the 500 ms interaction target cover switching *to* a view, or only filtering within one? | whoever signs off the Phase 0 metrics | Under the second reading every measured number passes. Under the first, the funnel's 525 ms at product grain is a 5% miss, and closing it costs a second on first render (28). |
 
