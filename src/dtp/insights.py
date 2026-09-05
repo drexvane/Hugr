@@ -506,17 +506,39 @@ def say_comparison(comp: Comparison) -> str:
 
 
 def say_ranking(df: pd.DataFrame, metric_key: str, dim_key: str,
-                top: int = 3) -> str:
-    """Names the leaders and their share, from the frame the chart plots."""
+                top: int = 3, ascending: bool | None = None) -> str:
+    """Names the leaders and their share, from the frame the chart plots.
+
+    By default the frame is re-sorted by the metric's own direction, which is what
+    every ranked panel in the dashboard wants: revenue descending, delay ascending.
+
+    `ascending` is for a caller whose frame is deliberately ordered the other way.
+    Phase 2 never needed it - the one panel that shows the bad end has `say_losses` -
+    but the agent lets a user choose the sort, and "the ten worst products by profit"
+    produces a frame whose first row is a $965 loss. Re-sorting that and calling the
+    result the leaders describes the opposite end of the chart beside it, so the
+    direction travels with the frame and the wording follows it.
+    """
     if df.empty or metric_key not in df.columns:
         return "No rows match these filters."
     met, dim = M.metric(metric_key), M.dimension(dim_key)
-    ranked = df.sort_values(metric_key, ascending=not met.higher_is_better)
+    natural = not met.higher_is_better
+    order = natural if ascending is None else ascending
+    ranked = df.sort_values(metric_key, ascending=order)
     head = ranked.head(top)
     names = ", ".join(_short_label(str(v)) for v in head[dim_key])
+    many = len(head) > 1
+    if order == natural:
+        verb, tail = (" lead with " if many else " leads with "), " at the top"
+    else:
+        # The head of this frame is the metric's bad end, so say which end it is
+        # rather than calling it the top of anything.
+        end = "lowest" if order else "highest"
+        verb = (" are the " if many else " is the ") + end + " at "
+        tail = ""
     text = (_plural(dim.label) + " ranked by " + met.label.lower() + ": " + names
-            + (" lead with " if len(head) > 1 else " leads with ")
-            + M.fmt(head[metric_key].iloc[0], met.unit, compact=True) + " at the top")
+            + verb
+            + M.fmt(head[metric_key].iloc[0], met.unit, compact=True) + tail)
     values = pd.to_numeric(ranked[metric_key], errors="coerce")
     total, head_total = values.sum(), pd.to_numeric(head[metric_key],
                                                     errors="coerce").sum()

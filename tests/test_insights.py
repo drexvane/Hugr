@@ -527,6 +527,42 @@ def test_a_ranking_of_nothing_says_so(wh):
         "No rows match these filters."
 
 
+def test_a_ranking_ordered_against_the_metric_names_the_end_it_shows():
+    """The defect the agent surfaced: a caller can order a frame either way.
+
+    `say_ranking` re-sorts by the metric's own direction, which is right for every
+    dashboard panel and wrong for "the ten worst products by profit" - a frame whose
+    first row is the deepest loss, captioned with the shallowest one and the word
+    "lead". `ascending` makes the direction travel with the frame.
+    """
+    frame = pd.DataFrame({"product": ["Sinking", "Middling", "Best"],
+                          "profit": [-900.0, 100.0, 500.0]})
+    # The default is unchanged: the metric's good end, described as leading.
+    assert "Best leads with $500.00 at the top" in \
+        I.say_ranking(frame, "profit", "product", top=1)
+    # Told the frame is worst-first, it names the worst and does not call it the top.
+    worst = I.say_ranking(frame, "profit", "product", top=2, ascending=True)
+    assert "Sinking, Middling are the lowest at -$900.00" in worst
+    assert "lead" not in worst and "at the top" not in worst
+
+
+def test_the_end_named_depends_on_the_metric_not_on_the_sort_alone():
+    # Lower is better for a delay, so ascending *is* the good end and "lead" is
+    # right; descending is the bad end and gets named as the highest.
+    frame = pd.DataFrame({"market": ["Quick", "Slow"],
+                          "avg_delay_days": [0.5, 4.0]})
+    assert " lead with " in I.say_ranking(frame, "avg_delay_days", "market",
+                                          ascending=True)
+    said = I.say_ranking(frame, "avg_delay_days", "market", ascending=False)
+    assert "are the highest at " in said and "Slow, Quick" in said
+
+
+def test_one_row_is_the_lowest_rather_than_are_the_lowest():
+    frame = pd.DataFrame({"product": ["Sinking"], "profit": [-900.0]})
+    assert " is the lowest at " in I.say_ranking(frame, "profit", "product",
+                                                top=1, ascending=True)
+
+
 # --------------------------------------------------------------------------- #
 # the four sentences the dashboard needed and a ranking could not give
 # --------------------------------------------------------------------------- #

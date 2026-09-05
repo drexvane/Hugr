@@ -3,11 +3,13 @@
 Messy data → clean data → dashboard → AI query agent. Roadmap and phase gates in
 [`project_roadmap.md`](project_roadmap.md).
 
-**Phases 1 and 2 are built, tested, and running against real data**: audit (1.1),
+**Phases 1, 2 and 3 are built, tested, and running against real data**: audit (1.1),
 cleaning and validation (1.2), the automated pipeline with versioning, a data
-dictionary and alerts (1.3), and a six-view dashboard over a semantic metric layer
-(2.1–2.3). Every number below comes from the DataCo Smart Supply Chain dataset in
-[`dataset/`](dataset) — 180,519 order lines and 469,977 web access-log rows.
+dictionary and alerts (1.3), a six-view dashboard over a semantic metric layer
+(2.1–2.3), and an AI query agent that turns a question into a validated plan rather
+than into SQL (3.1–3.3). Every number below comes from the DataCo Smart Supply Chain
+dataset in [`dataset/`](dataset) — 180,519 order lines and 469,977 web access-log
+rows.
 
 ## Quick start
 
@@ -24,9 +26,15 @@ dtp pipeline --raw dataset
 streamlit run dashboard/app.py
 ```
 
+```bash
+dtp ask "revenue and margin by category"
+```
+
 Without installing, `PYTHONPATH=src python -m dtp.cli <command>` is equivalent.
 The dashboard needs the `dashboard` extra (`pip install -e ".[dashboard]"`) if you
-skipped `requirements.txt`, and a published snapshot to read.
+skipped `requirements.txt`, and a published snapshot to read. `ask` needs neither an
+API key nor the `agent` extra to run — without a key it uses a keyless keyword
+matcher and says so.
 
 One command, five stages. A real run over the shipped dataset:
 
@@ -67,6 +75,7 @@ flag. Forcing changes what is published, not the verdict: the run still exits 1.
 | `dtp audit` | Phase 1.1: profile + schema matrix + ranked risks |
 | `dtp profile` · `dtp schema` · `dtp risks` | one audit report each |
 | `dtp synthetic` | regenerate the messy test fixture |
+| `dtp ask "..."` | Phase 3: ask a question about a snapshot; `--repl` for follow-ups, `--stub` for no key |
 
 `--raw`, `--clean`, `--versions`, `--config` and `--rules` override the defaults.
 `pipeline` also takes `--stop-after STAGE` (iterate on rules without publishing),
@@ -222,9 +231,11 @@ streamlit run dashboard/app.py
 ```
 
 Six views, each answering one question, over the newest snapshot (older ones are
-selectable). Every figure is gated: cancelled and suspected-fraud lines carry full
-money values and a delivery delay for shipments that never happened, so the metric
-layer excludes them and the overview states the $1.57M difference once, explicitly.
+selectable), plus a seventh screen that takes a question in words — see
+[AI query agent](#ai-query-agent). Every figure is gated: cancelled and
+suspected-fraud lines carry full money values and a delivery delay for shipments that
+never happened, so the metric layer excludes them and the overview states the $1.57M
+difference once, explicitly.
 
 | View | Question | What is on it |
 |---|---|---|
@@ -241,9 +252,10 @@ Three things it does that a chart library does not give you for free:
   flagged past 3.5. Not mean and σ, because one extreme month inflates σ and hides
   itself, which is the case the feature exists for.
 - **Every panel carries one sentence computed from the frame that panel plots.** A
-  caption cannot contradict the chart beside it. No model is involved in Phase 2:
-  generated prose next to a chart is an unchecked claim until Phase 3 builds the
-  guardrail that verifies its numbers.
+  caption cannot contradict the chart beside it. No model is involved on these six
+  views: generated prose next to a chart is an unchecked claim until something
+  verifies its numbers, which is what Phase 3's agent adds for the one screen that
+  has a model on it.
 - **It says when a comparison is not safe to make.** In this extract `market` is
   very nearly a period — 26 of 37 months hold exactly one — so the geography view
   says so, and from Oct 2017 an order carries one line where it previously carried
@@ -275,6 +287,95 @@ no Streamlit, `dtp.dashboard.views` returns a whole screen as values, and
 crossed — which is what lets Phase 3's agent reuse a view instead of reimplementing
 it.
 
+## AI query agent
+
+```bash
+dtp ask "the ten worst products by profit"
+dtp ask --repl                        # a session: follow-ups patch the last plan
+dtp ask --stub "revenue by market"    # no key, no network
+```
+
+**The model does not write SQL. It fills in a plan.** One tool, whose fields are
+registry keys: which metrics, which dimensions, which window, which sort. Code turns
+that into one `metrics.aggregate` call, so a question inherits the gate, the join and
+the thin-group floor that Phase 2 already argued for. `SUM(Sales)` over this data
+overstates revenue by $1.57M, and the obvious query is the wrong one here — a
+text-to-SQL agent would write the obvious query.
+
+```
+$ dtp ask --stub "the ten worst products by profit"
+snapshot 20260903T224815   model keyword-stub
+
+Profit by product, lowest profit first, top 10
+Profit: $3.81M
+Products ranked by profit: SOLE E35 Elliptical, SOLE E25 Elliptical, GoPro
+HERO3+ Black Edition Camera are the lowest at -$965.12.
+note: the figures above are totals for the whole window, not only the 10 rows shown
+```
+
+That run used no key and made no network call — the plan came from the keyless
+matcher, and everything after it is the same code a model's plan goes through.
+
+Five steps per question, and the order is the design: screen the question, ask for a
+plan, validate it against the registry, execute and render, then ask for one sentence
+and check it. A question this platform does not answer never becomes an API call,
+which is a privacy property before it is a cost one.
+
+**Twelve refusals, each with something askable offered instead.** Naming a customer,
+asking why, asking for a forecast, asking to change the data and asking for raw SQL
+are refused before a token leaves the process; an unknown metric, an unknown
+dimension, an unknown value, an empty result, a window outside the data and a funnel
+outside the log window are refused by the validator, by name, with the near-misses
+listed. `docs/03-agent-design.md` carries the table, and a test fails if a code exists
+in one and not the other.
+
+**No number on screen comes from the model.** Tiles, axes and tables are built from
+the frame in code; the model is asked for prose only, and every figure in that prose
+is matched against the frame it was shown. One that does not hold drops the whole
+sentence — not the offending number, because editing prose to remove a figure leaves
+grammar that reads as if it were checked — and the templated sentence takes its place,
+with the drop stated rather than hidden. A name the frame does not carry counts as
+fabrication too, even when every number in the sentence is real.
+
+**Session memory is a plan, not a transcript.** "Break that down by region" is
+`{"by": ["region"]}` applied to whatever was asked before — a much smaller thing to
+get right than replaying a conversation, and inspectable, because `:plan` prints it.
+Changing snapshot clears it rather than reinterpreting yesterday's keys against
+different data. Nothing is written to disk: what people asked about customers is not
+something this project stores, and a test asserts the process writes nothing.
+
+**Two calls per question, both small**, and only the second carries data — the head of
+an *aggregated* frame, group labels and metric values, truncated to 12 rows. No
+row-level data and no personal column, because those are not dimensions and cannot be
+in a plan. This is the one place in the project that sends anything anywhere;
+`dtp.monitoring` has no network sink at all and a test enforces that.
+
+**It runs without a key.** No `ANTHROPIC_API_KEY` means a keyless keyword matcher
+that reads the plain shapes off the registry and declines the rest with the same
+`CANNOT_ANSWER` reply a real model uses — so the pipeline behind the model is
+demonstrable on a fresh clone, and what the stub cannot do it refuses rather than
+guesses. The dashboard's seventh screen uses it the same way and names it on screen.
+
+The reviewed question set is [`tests/agent_questions.yml`](tests/agent_questions.yml)
+— 32 questions, each with the plan or refusal it should produce and why that is the
+right reading, in a file a reviewer who does not read Python can argue with. It does
+not call the API: a live run against the real model is
+[`scripts/agent_smoke.py`](scripts/agent_smoke.py), which is key-gated, writes a log,
+and treats a model that disagrees with the set as a measurement rather than a build
+failure. That measurement belongs to whoever owns the spend.
+
+Four defects this phase surfaced in code that was already tested and committed, each
+now pinned from both sides: an ungrouped aggregate over an empty window returns one
+row of nulls rather than no rows, so "revenue in LATAM in June 2017" became a tile
+reading `n/a` beside a fluent sentence; the fabrication check flagged
+`Women's Apparel` because `Apparel` is a department the frame did not hold, dropping a
+true sentence; a refusal offered "orders by city" as the alternative to naming a
+customer, when the geography path deliberately stops at country — a refusal handing
+the user a second refusal; and `insights.say_ranking` re-sorted every frame by the
+metric's own direction, so a worst-first chart was captioned with its *shallowest*
+loss and the word "lead". The last one only shows up once a user picks the sort, which
+is exactly what this phase added.
+
 ## Layout
 
 ```
@@ -288,9 +389,10 @@ reports/         generated cleaning, validation, alert, pipeline and audit outpu
 src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
                  pipeline, profile, schema_map, risks, io_utils, cli
                  phase 2: warehouse, metrics, insights, charts, dashboard/views
+                 phase 3: agent/ — plan, tools, guard, session, client
 dashboard/       app.py — Streamlit placement only, importing the view layer
-scripts/         make_synthetic_messy.py
-tests/           503 tests
+scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run)
+tests/           908 tests
 ```
 
 ## Tests
@@ -299,13 +401,15 @@ tests/           503 tests
 python -m pytest
 ```
 
-503 tests, no network, and no dependency on the real dataset — everything runs
+908 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
-hand-built frames. By module: insights 74, metrics 58, charts 53, views 47,
-monitoring 44, clean 37, profile 37, pipeline 28, validate 27, dictionary 26,
-versioning 22, schema_map 20, warehouse 19, risks 11. Phase 2's own layers hold
-251 of them, which is the ratio the layering was for: a boundary nobody tests is a
-convention, not a boundary.
+hand-built frames. By module: agent question set 137, agent guard 73, agent plan 61,
+insights 77, metrics 58, charts 53, views 47, monitoring 44, agent session 42,
+agent stub 39, clean 37, profile 37, pipeline 28, validate 27, dictionary 26,
+versioning 22, schema_map 20, warehouse 19, smoke script 17, dashboard Ask screen 17,
+`dtp ask` 16, risks 11. Phase 2's own layers hold 254 of them and Phase 3's 402,
+which is the ratio the layering was for: a boundary nobody tests is a convention,
+not a boundary.
 
 The ones that assert judgement rather than plumbing:
 
@@ -345,6 +449,32 @@ And the dashboard's, which are mostly about what a layer is *not* allowed to do:
   sweep that checks all of them, and a test requiring each view's question to
   appear in `docs/02` in the same words
 
+And the agent's, which are mostly about what a model is *not* allowed to reach:
+
+- nothing in `agent/` containing the string `SELECT` or calling `sql`, and nothing
+  importing Streamlit — the same AST walk Phase 2 uses, because one `Answer` has to
+  serve a terminal, a browser and a test
+- no personal column being nameable in a plan, and no personal column or value
+  appearing in either call's payload — asserted against the recorded `(system, user)`
+  pairs rather than described
+- the screen firing on all 21 questions it is for and on none of 18 answerable
+  near-misses: "drop groups with under 100 lines" is not a write, "percentage change
+  month over month" is not a forecast, "update on the pipeline please" is not an
+  update
+- twelve true sentences surviving the verifier and four fabricated ones being caught,
+  including a loss written either way round, a year in the prose not being read as a
+  figure, and a decorated literal held to its own kind — 20 is a real percentage in
+  the frame and not a real dollar amount
+- every refusal code appearing in the design doc's table and in the code, every one
+  being exercised by the question set, and one that is not in the table being
+  impossible to construct
+- a refused question costing exactly one API call and an answered one exactly two
+- a follow-up receiving the previous *plan* and not the previous question, and a
+  refused follow-up leaving the last working plan as the memory
+- the session writing nothing to disk, and `--repl` saying so
+- every fallback suggestion a refusal offers being asked for real, so a refusal
+  cannot hand the user a second refusal
+
 ## Environment notes
 
 Python 3.12 with **pandas 3.x** — Copy-on-Write is default and the default string
@@ -362,5 +492,7 @@ what is still open.
 | 1.3 — Pipeline & documentation | done, tested; one command, versioned snapshots, 100% field coverage, alerts |
 | 2.1–2.3 — Dashboard: architecture, build, innovation layer | done, tested; six views, 251 tests over the Phase 2 layers |
 | 2.4 — Polish & review | measured: 1.19 s first render against a 2 s target, 25–525 ms per interaction against 500 ms. **Design review and stakeholder sign-off want a stakeholder** |
-| 3 — AI query agent | not started |
+| 3.1 — Architecture & query layer | done, tested; one tool over the metric registry rather than generated SQL, twelve refusal codes each with a fallback |
+| 3.2 — Agent build | done, tested; 32 reviewed questions in `tests/agent_questions.yml`, the dashboard's own chart selection reused rather than reimplemented |
+| 3.3 — Refinement | done, tested; session memory as a plan patch, a two-layer hallucination guardrail, and `dtp ask` / a dashboard Ask screen over one `Answer`. **The end-to-end log against the real model is `scripts/agent_smoke.py` and wants whoever owns the API spend** |
 | 4 — Testing, polish & launch | not started |

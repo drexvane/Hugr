@@ -1,0 +1,486 @@
+# The AI query agent's test set: the questions, the plan each should resolve to,
+# and why that is the right reading.
+#
+# It lives in YAML rather than in Python because the argument in it is not a coding
+# argument (`docs/03-agent-design.md` reason 22): whether "the ten worst products by
+# profit" means `profit` ascending or `-profit` descending is a question about
+# English, and whoever should settle it ought not to have to read pytest first.
+#
+# `tests/test_agent_questions.py` drives every entry, and **nothing here calls the
+# API**: the `plan` below is scripted as the model's tool call, so the set proves
+# that *if* the model produces this plan, the answer is correct, the chart is the
+# honest one for that shape and the refusal is the documented one. A live run
+# against the real model is `scripts/agent_smoke.py`, key-gated, because that
+# measurement belongs to whoever owns the spend.
+#
+# Every entry has:
+#   question   what a user types.
+#   why        why the expected reading is the right one. The reviewable part.
+# and exactly one of:
+#   plan       the `query_data` tool input the model is expected to produce.
+#   declined   what the model says when it will not answer at all.
+#   screened   true when `guard.scope_screen` refuses before any model call. The
+#              driver asserts that by checking the stub was never called.
+# and optionally:
+#   refusal    the code the answer must carry. Absent means it is answered.
+#   expect     resolved (fields of the validated plan), chart, rows, figure,
+#              caption, note, says, tiles, message.
+#   summaries  sentences a model might write over the result, each with the
+#              verdict the verifier must reach. Prose quality is not graded here;
+#              the verifier's behaviour on a lying model is.
+#
+# The figures are the fixture snapshot's, not the real extract's: 65 order lines
+# built in `tests/conftest.py` so every number below can be checked with a
+# calculator. Revenue by market is Europe $6,700.00, Pacific Asia $600.00,
+# LATAM $400.00, and the window runs 2016-03-15 to 2017-12-15.
+
+questions:
+
+# --------------------------------------------------------------------------- #
+# answered: one entry per shape `charts.choose` has an honest chart for
+# --------------------------------------------------------------------------- #
+
+- question: revenue and margin by category
+  why: >
+    Two metrics over one dimension is a question about the relationship between
+    them, not two rankings side by side, so the honest chart is a scatter. No sort
+    was asked for, so the validator supplies the first metric descending: a ranked
+    question with no stated order is a ranking by its own measure.
+  plan: {metrics: [revenue, margin_pct], by: [category]}
+  expect:
+    resolved: {metrics: [revenue, margin_pct], by: [category], order_by: "-revenue"}
+    chart: scatter
+    rows: 5
+  summaries:
+    - text: "Women's Apparel takes 74.0% of the revenue on this chart."
+      verified: true
+      why: >
+        A share of a money column is a legitimate reading of a pair, so the
+        verifier derives it: 5,700 of 7,700 is 74.026%, which prints as 74.0% and
+        is inside the tolerance the formatter implies. The label passes despite
+        `Apparel` being a department absent from this frame, because it appears
+        only inside a category the frame does carry.
+    - text: "Technology leads with $5,700.00."
+      verified: false
+      why: >
+        The same two names the other way round, and the reason containment is an
+        allowance rather than a rule: Technology is a department, not one of the five
+        categories on this chart. The figure is real and the row it describes was
+        never shown, which is the shape reason 21 calls fabrication with true
+        numbers in it.
+- question: monthly revenue for 2017
+  why: >
+    "Monthly" is a grain, not a grouping, which is what routes this to
+    `timeseries()` - the only call that guarantees one row per period. The end
+    date is asked for as 2017-12-31 and the snapshot stops on 2017-12-15, so it is
+    clamped and the answer says so: a window silently widened past the data is how
+    a series grows a phantom empty month.
+  plan: {metrics: [revenue], grain: month, date_from: "2017-01-01",
+         date_to: "2017-12-31"}
+  expect:
+    resolved: {metrics: [revenue], grain: month, date_from: "2017-01-01",
+               date_to: "2017-12-15"}
+    chart: line
+    rows: 12
+    note: end moved to 2017-12-15
+
+- question: the ten worst products by profit
+  why: >
+    "Worst" is ascending, and getting this backwards is the single most likely
+    misreading in the set - `-profit` would answer the opposite question with a
+    chart that looks just as convincing. Ten is a limit, and because a limit means
+    the tiles above the chart no longer describe the rows in it, the answer carries
+    a note saying so. The sentence has to follow the sort too: the templated line
+    used to re-sort by the metric's own direction and caption a worst-first chart
+    with its shallowest row, described as leading.
+  plan: {metrics: [profit], by: [product], order_by: profit, limit: 10}
+  expect:
+    resolved: {metrics: [profit], by: [product], order_by: profit, limit: 10}
+    chart: bar
+    rows: 6
+    caption: lowest profit first
+    says: are the lowest at
+    note: totals for the whole window
+
+- question: revenue by market
+  why: >
+    The plainest question in the set, and the one every guardrail is measured
+    against. Three markets is a short bar chart, upright: labels only lie down
+    once there are more than six of them.
+  plan: {metrics: [revenue], by: [market]}
+  expect:
+    resolved: {metrics: [revenue], by: [market], order_by: "-revenue"}
+    chart: bar
+    rows: 3
+    tiles: [Revenue]
+    says: Markets ranked by revenue
+  summaries:
+    - text: "Europe leads with $6,700.00, ahead of Pacific Asia at $600.00 and
+             LATAM at $400.00."
+      verified: true
+      why: Three figures quoted from the frame at the precision it prints them.
+    - text: "Europe leads with $9,100.00."
+      verified: false
+      why: >
+        The shape of the failure this whole layer exists for - a fluent sentence
+        beside a correct chart, carrying a number that is in neither. Nothing in
+        the frame or derivable from it is within half a cent of 9,100.
+    - text: "Western Europe leads with $6,700.00."
+      verified: false
+      why: >
+        Every figure is real and the sentence is still fabrication: Western Europe
+        is a region, not one of the three markets on this chart. Labels are checked
+        strictly against the whole drill path for exactly this case.
+    - text: "Antarctica leads with $6,700.00."
+      verified: true
+      why: >
+        The documented residual (reason 21), pinned here so it cannot be quietly
+        claimed as closed: the label check is a membership test over names that
+        exist in the data, and a name that appears nowhere has no list to be
+        missing from. Catching it means a stop list of English words, and a stop
+        list rots.
+
+- question: what are our total revenue and margin?
+  why: >
+    No grouping, so there is nothing to plot and the answer is the KPI row: two
+    tiles, no figure. `charts.auto_figure` returns None for this shape rather than
+    drawing a one-bar chart, and the CLI prints the tiles.
+  plan: {metrics: [revenue, margin_pct]}
+  expect:
+    resolved: {metrics: [revenue, margin_pct]}
+    chart: kpi
+    figure: false
+    rows: 1
+    tiles: [Revenue, Margin]
+    says: Revenue $7.7k; Margin 8.7%
+
+- question: revenue by department and category
+  why: >
+    Two dimensions and one metric is a heatmap. Grouped bars over the same shape
+    are twenty bars a reader has to pair up by colour, and the point of the
+    question is which cell is dark.
+  plan: {metrics: [revenue], by: [department, category]}
+  expect:
+    chart: heatmap
+    rows: 5
+- question: monthly revenue by market
+  why: >
+    A grain plus a dimension. The time axis wins over the ranking - a monthly
+    result plotted as bars sorted by value destroys the one thing a series is for -
+    so this is one line per market, and no default sort is applied because a series
+    is chronological.
+  plan: {metrics: [revenue], by: [market], grain: month}
+  expect:
+    resolved: {metrics: [revenue], by: [market], grain: month}
+    chart: line_grouped
+    rows: 17
+
+- question: the on-time rate by shipping mode, ignoring modes under ten lines
+  why: >
+    Ranking a *rate* without a thin-group floor is how a group of three lines tops
+    the chart on rounding noise, which is why the tool schema asks for `min_lines`
+    on exactly these metrics. Here it removes First Class, which has two lines, and
+    the answer says the tiles still cover the whole window.
+  plan: {metrics: [on_time_pct], by: [shipping_mode], min_lines: 10}
+  expect:
+    resolved: {metrics: [on_time_pct], by: [shipping_mode], order_by: "-on_time_pct",
+               min_lines: 10}
+    chart: bar
+    rows: 1
+    caption: groups under 10 lines excluded
+    note: totals for the whole window
+
+- question: how late are our shipments?
+  why: >
+    A distribution, not a ranking: the delay column holds seven integer values, so
+    the bars stay in the column's own order rather than being sorted by height, and
+    the sentence is about spread rather than about a leader. `delay_days` is the one
+    dimension `charts.choose` names explicitly for this reason.
+  plan: {metrics: [shipped_lines], by: [delay_days], order_by: delay_days}
+  expect:
+    chart: bar
+    rows: 6
+    says: at 0 or below
+
+- question: revenue in europe by category
+  why: >
+    The filter value is lower case and the column is not. Case-folding it against
+    the column is the difference between an answer and a confident summary of an
+    empty frame, so the resolved plan carries `Europe` as the data spells it.
+  plan: {metrics: [revenue], by: [category], where: {market: [europe]}}
+  expect:
+    resolved: {metrics: [revenue], by: [category], where: {market: [Europe]},
+               order_by: "-revenue"}
+    chart: bar
+    rows: 3
+    caption: Market in Europe
+- question: the three categories with the best margin, and their revenue
+  why: >
+    The sort is on a metric the question did not ask to see. Refusing would be
+    pedantic and dropping the sort would answer a different question, so the
+    validator adds the column and says it did - sorting by a figure is asking to
+    see it. Adding it also makes this a two-metric result, hence a scatter.
+  plan: {metrics: [revenue], by: [category], order_by: "-margin_pct", limit: 3}
+  expect:
+    resolved: {metrics: [revenue, margin_pct], by: [category],
+               order_by: "-margin_pct", limit: 3}
+    chart: scatter
+    rows: 3
+    note: margin_pct was added because the sort is on it
+
+- question: revenue by quarter
+  why: >
+    The coarse end of the time drill path, and a series with gaps in it: the
+    fixture has no orders between 2016-07 and 2016-12, and those quarters are
+    absent rather than zero. A zero would read as "we sold nothing", which is a
+    different claim from "the extract covers nothing here".
+  plan: {metrics: [revenue], grain: quarter}
+  expect:
+    resolved: {metrics: [revenue], grain: quarter}
+    chart: line
+    rows: 6
+
+- question: how has the number of lines per order changed?
+  why: >
+    The metric that exists because it moves for reasons that are not commercial.
+    "How has X changed" is the phrasing that wants a grain, and month is the finest
+    one - a composition break shows up as a step, and a coarser grain hides it
+    inside an average.
+  plan: {metrics: [lines_per_order], grain: month}
+  expect:
+    resolved: {metrics: [lines_per_order], grain: month}
+    chart: line
+    rows: 16
+
+- question: what was our revenue in 2017?
+  why: >
+    A period is a window, not a value to match, but a model will reach for
+    `where: {"year": ["2017"]}` anyway. A four-digit year is unambiguous, so it is
+    translated into a date range and the answer says it was - refusing here would
+    be refusing a perfectly clear question over a spelling.
+  plan: {metrics: [revenue], where: {year: ["2017"]}}
+  expect:
+    resolved: {metrics: [revenue], date_from: "2017-01-01", date_to: "2017-12-15"}
+    chart: kpi
+    rows: 1
+    note: read 2017 as a date range
+# --------------------------------------------------------------------------- #
+# the funnel: the one purpose-built query, and the window that makes it one
+# --------------------------------------------------------------------------- #
+
+- question: views and orders by category
+  why: >
+    Page views are not an aggregate over order lines, so this cannot be served by
+    the same call as everything above - and naming a funnel metric is enough to
+    say so. The plan is re-routed rather than refused, because "views and orders by
+    category" is one query over the log's own window, and the answer says which
+    query answered it.
+  plan: {metrics: [views, orders], by: [category]}
+  expect:
+    resolved: {kind: funnel, funnel_by: category, metrics: [views, orders],
+               limit: 200}
+    chart: scatter
+    caption: over the access log's own window
+    note: answered from the funnel query
+    tiles: [Page views, Orders, View-to-order rate, Revenue]
+
+- question: the view-to-order rate by product
+  why: >
+    The rate the platform is most likely to be asked for and most likely to get
+    wrong: over the full order window it understates by roughly seven times,
+    because the log covers five of the fact table's months. The window is the
+    query's, not the reader's, and the caption says so on every answer.
+  plan: {metrics: [view_to_order_pct], kind: funnel, funnel_by: product}
+  expect:
+    resolved: {kind: funnel, funnel_by: product, metrics: [view_to_order_pct],
+               limit: 200}
+    chart: scatter
+    caption: views against orders by product
+
+# --------------------------------------------------------------------------- #
+# refused by the validator or the executor: raised from the registry and the
+# data, so they hold whatever the model does (design reason 8)
+# --------------------------------------------------------------------------- #
+
+- question: how many returns did we get?
+  why: >
+    There is no returns column in this extract. The failure to avoid is not the
+    refusal but the alternative: answering from `late_lines` or from cancelled
+    orders would produce a plausible number for a question nobody asked.
+  plan: {metrics: [returns]}
+  refusal: unknown_metric
+  expect:
+    message: "'returns' is not a metric here"
+- question: revenue by salesperson
+  why: >
+    The data has no such column, and the nearest thing to it - `segment` - means
+    something entirely different. Naming the fifteen dimensions that do exist is
+    what turns a dead end into a second attempt.
+  plan: {metrics: [revenue], by: [salesperson]}
+  refusal: unknown_dimension
+  expect:
+    message: market
+
+- question: revenue in Wakanda
+  why: >
+    A well-formed plan whose filter matches nothing. Left unchecked this returns an
+    empty frame and a fluent summary of nothing, so the values that do exist are
+    named instead - which is also how a reader learns that the geography here is
+    five markets rather than a country list.
+  plan: {metrics: [revenue], where: {market: [Wakanda]}}
+  refusal: unknown_value
+  expect:
+    message: Europe
+
+- question: margin by product for groups with over 5,000 lines
+  why: >
+    Every part of this is valid and the combination matches nothing: the fixture's
+    largest product has 57 lines. The refusal names the thin-group cut-off as the
+    part that emptied it, because a blank chart beside a confident sentence is the
+    shape a hallucination takes here.
+  plan: {metrics: [margin_pct], by: [product], min_lines: 5000}
+  refusal: empty_result
+  expect:
+    message: at least 5000 order lines
+
+- question: what was our revenue in LATAM in June 2017?
+  why: >
+    The same refusal in the shape that has no chart to look blank. Both parts exist -
+    LATAM has orders and June 2017 is inside the window - and the combination has
+    nothing, which SQL reports as one row of nulls rather than as no rows. Left
+    uncaught it is a tile reading "n/a" beside whatever sentence the model writes.
+  plan: {metrics: [revenue], where: {market: [LATAM]}, date_from: "2017-06-01",
+         date_to: "2017-06-30"}
+  refusal: empty_result
+  expect:
+    message: Each part exists; the combination does not.
+
+- question: what was revenue in Q3 2019?
+  why: >
+    Outside the snapshot entirely. The window is read from the data rather than
+    hardcoded, so this refusal keeps naming the right period after the next load -
+    a hardcoded window is a message that goes stale without failing.
+  plan: {metrics: [revenue], date_from: "2019-07-01", date_to: "2019-09-30"}
+  refusal: out_of_window
+  expect:
+    message: 2016-03-15 to 2017-12-15
+
+- question: what was the conversion rate in 2016?
+  why: >
+    The date range is inside the order window and outside the log's, and the two
+    cannot be reconciled by clamping: a rate whose numerator covers five months and
+    whose denominator covers thirty-seven is wrong by about seven times in the
+    direction that flatters it. So the shape is refused and the funnel is offered.
+  plan: {metrics: [view_to_order_pct], date_from: "2016-01-01",
+         date_to: "2016-12-31"}
+  refusal: funnel_window
+  expect:
+    message: comes from the access log
+- question: revenue by market, category and shipping mode, month by month
+  why: >
+    Four groupings is a cross product rather than an answer, and no chart is honest
+    about it. Two is the cap the tool schema states and three is where the validator
+    stops - the answer to a question this wide is to ask a narrower one and drill.
+  plan: {metrics: [revenue], by: [market, category, shipping_mode], grain: month}
+  refusal: unparseable
+  expect:
+    message: cross product
+
+- question: how many units were returned to us?
+  declined: >
+    CANNOT_ANSWER: this extract has no returns - it holds order lines, delivery
+    dates and page views.
+  why: >
+    The model's own refusal, which is the fourth line of defence and not the first.
+    Nothing structural catches this: `returns` is not a metric, so a model that
+    substituted the nearest thing would be refused anyway - but the sentence naming
+    what is missing is a better answer than a list of near misses, so it is kept and
+    the fallback examples are added to it.
+  refusal: unparseable
+  expect:
+    message: this extract has no returns
+    suggestions: true
+
+- question: what is driving the drop in October?
+  declined: >
+    CANNOT_ANSWER: I cannot say why revenue fell; this platform reports what
+    happened, not the reason.
+  why: >
+    The screen's patterns miss this phrasing - it says neither "why" nor "what
+    drove" - so the model answers, and its own sentence is then run through the same
+    screen and classified `causal`. The code is decided here rather than taken from
+    the model, which is what keeps a missed pattern costing clarity rather than
+    correctness.
+  refusal: causal
+  expect:
+    message: reports what happened, not why
+
+# --------------------------------------------------------------------------- #
+# refused before a token leaves the process: a kind of question, screened by
+# keyword, so no API call is made and no data is sent (design reason 8)
+# --------------------------------------------------------------------------- #
+
+- question: who is our biggest customer?
+  screened: true
+  refusal: personal_data
+  why: >
+    The row worth arguing about. The columns exist in the snapshot the agent
+    queries; the refusal is that naming a customer is a different act from
+    summarising a segment. It is structural as well as screened - no personal
+    column is a registry dimension, so no plan can name one - and it is screened
+    first so the question does not leave the process at all.
+  expect:
+    message: Summarising a segment and naming a person are different acts
+
+- question: which IP hit us most?
+  screened: true
+  refusal: personal_data
+  why: >
+    The same refusal reached by a different word. `client_ip` is in the clean data
+    and deliberately not a dimension, and this phrasing says neither "address" nor
+    "client", which is why the pattern is the bare word.
+  expect:
+    message: client IPs
+
+- question: why did revenue drop in October?
+  screened: true
+  refusal: causal
+  why: >
+    The platform reports what happened, not why. What it can prove is offered
+    instead - the composition break, the confounding warnings and the movers list -
+    because a refusal that names nothing askable is the one that makes people stop
+    asking.
+  expect:
+    message: the reason is yours to supply
+
+- question: what will revenue be next quarter?
+  screened: true
+  refusal: forecast
+  why: >
+    No model is fitted to this data, and a trend line extended by an LLM is a guess
+    wearing a number. The trend that did happen is available at three grains and is
+    what the fallback offers.
+  expect:
+    message: the trend that happened
+
+- question: delete the cancelled rows
+  screened: true
+  refusal: write
+  why: >
+    Stated as a property rather than as a policy: the warehouse is read-only views
+    over Parquet, so there is nothing here that could write even if it were asked
+    politely. The cancelled rows are also the reason half the metrics carry a gate,
+    so the fallback offers revenue by order status.
+  expect:
+    message: read-only views over Parquet
+
+- question: run SELECT * FROM order_items GROUP BY market
+  screened: true
+  refusal: raw_sql
+  why: >
+    Not offered, by design - reason 1. Every answer here comes from the registry so
+    that a figure carries its gate with it, and `SUM(Sales)` over this data
+    overstates revenue by $1.57M. Anyone who wants SQL is pointed at the snapshot
+    Parquet and DuckDB, which is two lines.
+  expect:
+    message: open the snapshot Parquet in DuckDB

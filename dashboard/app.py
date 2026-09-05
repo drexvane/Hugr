@@ -4,7 +4,9 @@
 
 Everything this file does is place things on a page. What a view contains is
 decided in `dtp.dashboard.views`, which imports no Streamlit and can be tested
-without a browser; if a number here is wrong, it is wrong there.
+without a browser; if a number here is wrong, it is wrong there. The Ask screen is
+the same arrangement one layer over: `dtp.agent` returns an `Answer`, and an `Answer`
+has a view's shape, so rendering it is placement too.
 
 No authentication. This binds to localhost and reads local Parquet, which is
 adequate for a demo on one machine and not adequate the moment it is hosted: the
@@ -12,6 +14,11 @@ clean data carries customer names, street addresses and 3,340 client IPs. No vie
 surfaces any of those columns and geography stops at city level, but that is a
 choice about display, not an access control. `docs/02-dashboard-design.md` records
 the decision and Phase 4 owns it.
+
+The Ask screen is the one thing here that talks to a third party, and only when a key
+is present: it sends the question, the registry and the head of an aggregated frame.
+`docs/03-agent-design.md` reason 20 is the argument; without a key it runs the
+keyless stub instead and says so.
 """
 
 from __future__ import annotations
@@ -38,6 +45,12 @@ st.set_page_config(page_title="DataCo supply chain", page_icon="\N{PACKAGE}",
 # cancelled and suspected-fraud lines, so filtering to CANCELED would return zeros
 # from a control that looks like it should return rows - the gate owns that column.
 FILTER_DIMS = ("market", "segment", "shipping_mode", "department")
+
+# The seventh entry in the nav, and not a seventh view: the six in `V.CATALOGUE` are
+# built from the sidebar's filters, and this one is built from a question. Keeping it
+# out of the catalogue is what keeps `V.BUILDERS` and the nav the same six things.
+ASK = "ask"
+ASK_TITLE = "Ask a question"
 
 
 @st.cache_resource(show_spinner=False)
@@ -76,10 +89,21 @@ def _sidebar() -> tuple[str, M.Filters, int, str]:
              "order is tested. A dashboard reading the live clean directory would "
              "change mid-presentation if a pipeline run started.")
 
-    view = st.sidebar.radio("View", [k for k, _, _ in V.CATALOGUE],
-                            format_func=lambda k: V.TITLES[k])
+    view = st.sidebar.radio("View", [k for k, _, _ in V.CATALOGUE] + [ASK],
+                            format_func=lambda k: V.TITLES.get(k, ASK_TITLE))
 
     lo, hi = _bounds(version_id)
+    if view == ASK:
+        # No date range, no filters, no thin-group floor: the question carries its
+        # own window and its own grouping. Controls that quietly do nothing are
+        # worse than controls that are absent.
+        st.sidebar.divider()
+        st.sidebar.caption("The question sets its own window and filters, so the "
+                           "controls the other views use are not shown here.")
+        _privacy_note()
+        return version_id, M.Filters(date_from=str(lo.date()),
+                                     date_to=str(hi.date()), where={}), 0, view
+
     st.sidebar.divider()
     picked = st.sidebar.date_input(
         "Order date", value=(lo.date(), hi.date()),
@@ -105,14 +129,18 @@ def _sidebar() -> tuple[str, M.Filters, int, str]:
              "built in.")
 
     st.sidebar.divider()
-    st.sidebar.caption("Local process, local Parquet, no login. Customer names, "
-                       "street addresses and client IPs are in the data and are "
-                       "not shown on any view; that is a display choice, not an "
-                       "access control.")
+    _privacy_note()
     return (version_id,
             M.Filters(date_from=str(date_from), date_to=str(date_to),
                       where=where),
             int(min_lines), view)
+
+
+def _privacy_note() -> None:
+    st.sidebar.caption("Local process, local Parquet, no login. Customer names, "
+                       "street addresses and client IPs are in the data and are "
+                       "not shown on any view; that is a display choice, not an "
+                       "access control.")
 
 
 # --------------------------------------------------------------------------- #
@@ -158,10 +186,119 @@ def _render(view) -> None:
         _render_panel(panel)
 
 
+# --------------------------------------------------------------------------- #
+# the ask screen
+#
+# `Answer` is a value with the same shape as a view - tiles, a figure, a frame, a
+# sentence - so this is placement too. Nothing here decides what a number is.
+# --------------------------------------------------------------------------- #
+
+@st.cache_resource(show_spinner=False)
+def _model():
+    """One model per process. The stub when there is no key, and it says which.
+
+    Falling back rather than failing: the dashboard is the demo, and a screen that
+    cannot be opened without a credential is a screen nobody sees. The stub matches
+    registry keys against the question's words and declines the rest, so what it
+    cannot do it refuses rather than guesses.
+    """
+    from dtp.agent import client as agent_client
+
+    if agent_client.api_key():
+        try:
+            return agent_client.AnthropicModel()
+        except RuntimeError as exc:                  # the SDK is not installed
+            st.warning(str(exc))
+    return agent_client.KeywordModel()
+
+
+def _session(wh, version_id: str):
+    """The session, kept across reruns. A snapshot change clears its memory.
+
+    The state key is not a widget key: Streamlit reserves those, and naming this one
+    `ask` made the form below refuse to build.
+    """
+    from dtp.agent import Session
+
+    if "ask_session" not in st.session_state:
+        st.session_state["ask_session"] = Session(wh, _model(), version_id)
+    session = st.session_state["ask_session"]
+    session.use(wh, version_id)
+    return session
+
+
+def _render_answer(answer) -> None:
+    if not answer.ok:
+        st.warning(answer.refusal.message, icon="\N{NO ENTRY SIGN}")
+        return
+    st.caption(answer.caption)
+    if answer.tiles:
+        _render_tiles(answer.tiles)
+    if answer.figure is not None:
+        st.plotly_chart(answer.figure, width="stretch",
+                        config={"displaylogo": False})
+    if answer.frame is not None:
+        with st.expander("The rows behind it", expanded=answer.figure is None):
+            st.dataframe(answer.frame, width="stretch", hide_index=True)
+    st.markdown(answer.summary)
+    if answer.withheld:
+        # Reason 11: the downgrade is shown, not swallowed. A user who cannot see
+        # that the model's sentence was dropped cannot tell the two apart.
+        st.caption("\N{WARNING SIGN} " + answer.withheld)
+    for note in answer.notes:
+        st.caption(note)
+    with st.expander("The plan that ran"):
+        st.json(answer.plan.to_dict())
+        st.caption("Filled in by " + answer.model + ", validated against the "
+                   "registry, then executed by `metrics.aggregate`. No SQL came "
+                   "from the model.")
+
+
+def _ask_screen(wh, version_id: str) -> None:
+    st.title(ASK_TITLE, anchor=False)
+    st.caption("Natural language in, the same charts and the same numbers out. "
+               "Every figure is computed here; the model only chooses which.")
+    session = _session(wh, version_id)
+
+    with st.form("ask_form", clear_on_submit=False):
+        question = st.text_input(
+            "Question", placeholder="revenue and margin by category",
+            label_visibility="collapsed")
+        asked = st.form_submit_button("Ask", type="primary")
+
+    # The question is asked, and a reset applied, before anything below is drawn - so
+    # the hints and the answer on screen describe the same state. Rendering first and
+    # acting second put every one of them an interaction behind.
+    if asked and question.strip():
+        with st.spinner("Asking..."):
+            session.ask(question)
+    if session.log and st.button(
+            "Start over", help="Forget the last plan, so the next question is not "
+                               "read as a follow-up."):
+        session.reset()
+        session.log.clear()
+
+    from dtp.agent.session import EXAMPLES
+
+    st.caption("Try: " + "  ·  ".join(EXAMPLES))
+    if session.plan is not None:
+        st.caption("Follow-ups patch the last plan, so \"break that down by "
+                   "region\" keeps everything else.")
+
+    if session.log:
+        _render_answer(session.log[-1])
+    for earlier in reversed(session.log[:-1]):
+        with st.expander(earlier.question):
+            _render_answer(earlier)
+
+
 def main() -> None:
     version_id, filters, min_lines, key = _sidebar()
     wh = _open(version_id)
 
+    if key == ASK:
+        _ask_screen(wh, version_id)
+        return
     if key == "health":
         _render(V.data_health(version_id=version_id))
         return

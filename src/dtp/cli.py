@@ -16,6 +16,15 @@ Phase 1.2/1.3 - turn it into something dependable:
     python -m dtp.cli dict           rebuild docs/data-dictionary.md
     python -m dtp.cli versions       list snapshots, or diff two of them
 
+Phase 3 - ask it something:
+
+    python -m dtp.cli ask "revenue by market"
+    python -m dtp.cli ask --repl                 a session, so follow-ups work
+    python -m dtp.cli ask --stub "margin by category"    no key, no network
+
+`ask` needs a snapshot, so `pipeline` comes first. Without ANTHROPIC_API_KEY it runs
+the keyless keyword stub and says so rather than failing.
+
 Every command takes --raw to point at a different source directory, which is
 how the same pipeline runs against the fixture and against the real data:
 
@@ -254,6 +263,88 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    """Ask the agent one question, or hold a session with `--repl`.
+
+    The model is chosen here and nowhere else: `--stub` is the keyless keyword
+    matcher, and without a key the command falls back to it rather than failing, so
+    `dtp ask` does something useful on a fresh clone.
+    """
+    from .agent import Session
+    from .agent import client as agent_client
+    from .warehouse import open_warehouse
+
+    if args.stub:
+        model = agent_client.KeywordModel()
+    elif agent_client.api_key():
+        model = agent_client.AnthropicModel(model=args.model)
+    else:
+        print("no " + agent_client.KEY_ENV + " found, so this is the keyless stub:")
+        print("it matches registry keys against your words and declines the rest.")
+        print("Copy .env.example to .env for the real thing.\n")
+        model = agent_client.KeywordModel()
+
+    with open_warehouse(version_id=args.snapshot, versions_dir=args.versions) as wh:
+        session = Session(wh, model)
+        print("snapshot " + wh.version_id + "   model " + model.name)
+        question = " ".join(args.question).strip()
+        # `dtp ask` with nothing to ask means the session, not an empty question.
+        if question and not args.repl:
+            answer = session.ask(question)
+            print("\n" + answer.text())
+            return 0 if answer.ok else 1
+        if question:
+            print("\n" + session.ask(question).text())
+        return _repl(session)
+
+
+_REPL_HELP = """\
+Ask a question, and follow up: "revenue by market", then "break that down by
+region". Commands:
+
+  :plan     the plan the last question resolved to
+  :new      forget it, so the next question is not a follow-up
+  :help     this
+  :quit     leave (or Ctrl-D)
+"""
+
+
+def _repl(session) -> int:
+    """One process, one session, nothing written down.
+
+    A REPL is where the follow-up patch earns its keep, and `:plan` is here because a
+    session whose memory cannot be printed is a session nobody can debug.
+    """
+    print("\n" + _REPL_HELP)
+    asked = 0
+    while True:
+        try:
+            line = input("ask> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not line:
+            continue
+        if line in (":quit", ":q", ":exit"):
+            break
+        if line in (":help", ":h", "?"):
+            print(_REPL_HELP)
+            continue
+        if line == ":new":
+            session.reset()
+            print("(forgotten - the next question starts fresh)")
+            continue
+        if line == ":plan":
+            print(session.plan.to_dict() if session.plan is not None
+                  else "(no plan yet)")
+            continue
+        answer = session.ask(line)
+        asked += 1
+        print(answer.text() + "\n")
+    print("asked " + str(asked) + " question(s); nothing was saved.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="python -m dtp.cli",
@@ -324,6 +415,20 @@ def build_parser() -> argparse.ArgumentParser:
     pipe.add_argument("--notes", default=None,
                       help="free text recorded in the snapshot manifest")
     pipe.set_defaults(func=cmd_pipeline)
+
+    ask = sub.add_parser("ask", help="ask the agent a question about a snapshot")
+    ask.add_argument("question", nargs="*", help="the question, unquoted is fine")
+    ask.add_argument("--repl", action="store_true",
+                     help="hold a session, so follow-ups patch the last plan")
+    ask.add_argument("--stub", action="store_true",
+                     help="use the keyless keyword matcher instead of the model")
+    ask.add_argument("--model", default=None,
+                     help="override DTP_AGENT_MODEL for this run")
+    ask.add_argument("--versions", type=Path, default=VERSIONS_DIR,
+                     help="snapshot directory (default: data/versions)")
+    ask.add_argument("--snapshot", default=None,
+                     help="a named snapshot id (default: the newest)")
+    ask.set_defaults(func=cmd_ask)
     return ap
 
 

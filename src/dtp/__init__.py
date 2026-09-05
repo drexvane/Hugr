@@ -5,6 +5,13 @@ Layered so each phase of project_roadmap.md maps onto modules:
   Phase 1.1  io_utils, profile, schema_map    audit & assessment
   Phase 1.2  clean, validate                  cleaning & standardization
   Phase 1.3  pipeline, versioning, dictionary, monitoring
+  Phase 2    warehouse, metrics, insights, charts, dashboard
+  Phase 3    agent                            questions in, checked answers out
+
+Each layer reads the one above it and never the reverse. `warehouse` owns every
+Parquet read, `metrics` is the only module that writes analytical SQL, and both the
+dashboard and the agent are consumers of the values those produce - which is why one
+`Answer` renders on a screen, prints in a terminal, and is asserted on in a test.
 """
 
 from pathlib import Path
