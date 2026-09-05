@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T22:48:12",
+  "generated_at": "2026-09-06T00:03:09",
   "problems": [
     "DescriptionDataCoSupplyChain.csv: skipped by config - The vendor's own field glossary (52 of the 53 fact columns). Not a table: it is consumed by dtp.dictionary as the business description of each field."
   ],

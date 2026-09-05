@@ -1,62 +1,63 @@
 {
   "ok": true,
-  "verdict": "PIPELINE OK - published snapshot 20260903T224815",
-  "version_id": "20260903T224815",
+  "verdict": "PIPELINE OK - published snapshot 20260906T000311",
+  "version_id": "20260906T000311",
+  "source": "dataset",
   "stages": [
     {
       "name": "clean",
       "ok": true,
       "skipped": false,
-      "seconds": 30.428,
+      "seconds": 12.849,
       "summary": "2 table(s), 647,247 rows, 0 rejected cell(s)",
       "outputs": {
-        "parquet:order_items": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\data\\clean\\order_items.parquet",
-        "parquet:access_logs": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\data\\clean\\access_logs.parquet",
-        "markdown": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\cleaning-report.md",
-        "json": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\cleaning-report.json"
+        "parquet:order_items": "C:\\CodeSpace\\Projects\\Hugr\\data\\clean\\order_items.parquet",
+        "parquet:access_logs": "C:\\CodeSpace\\Projects\\Hugr\\data\\clean\\access_logs.parquet",
+        "markdown": "C:\\CodeSpace\\Projects\\Hugr\\reports\\cleaning-report.md",
+        "json": "C:\\CodeSpace\\Projects\\Hugr\\reports\\cleaning-report.json"
       }
     },
     {
       "name": "validate",
       "ok": true,
       "skipped": false,
-      "seconds": 2.596,
+      "seconds": 1.884,
       "summary": "PASS - every rule held",
       "outputs": {
-        "markdown": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\validation-report.md",
-        "json": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\validation-report.json"
+        "markdown": "C:\\CodeSpace\\Projects\\Hugr\\reports\\validation-report.md",
+        "json": "C:\\CodeSpace\\Projects\\Hugr\\reports\\validation-report.json"
       }
     },
     {
       "name": "snapshot",
       "ok": true,
       "skipped": false,
-      "seconds": 13.537,
-      "summary": "20260903T224815 - 2 table(s), 647,247 rows (identical to 20260903T012120)",
+      "seconds": 1.301,
+      "summary": "20260906T000311 - 2 table(s), 647,247 rows (identical to 20260903T224815)",
       "outputs": {
-        "snapshot": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\data\\versions\\20260903T224815"
+        "snapshot": "C:\\CodeSpace\\Projects\\Hugr\\data\\versions\\20260906T000311"
       }
     },
     {
       "name": "dictionary",
       "ok": true,
       "skipped": false,
-      "seconds": 1.248,
+      "seconds": 0.605,
       "summary": "53 field(s), 100.0% documented",
       "outputs": {
-        "markdown": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\docs\\data-dictionary.md",
-        "json": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\data-dictionary.json"
+        "markdown": "C:\\CodeSpace\\Projects\\Hugr\\docs\\data-dictionary.md",
+        "json": "C:\\CodeSpace\\Projects\\Hugr\\reports\\data-dictionary.json"
       }
     },
     {
       "name": "monitor",
       "ok": true,
       "skipped": false,
-      "seconds": 0.167,
+      "seconds": 0.002,
       "summary": "OK - nothing to report",
       "outputs": {
-        "markdown": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\alerts.md",
-        "json": "D:\\kunal backup\\CodeSpace\\Projects\\Hugr\\reports\\alerts.json"
+        "markdown": "C:\\CodeSpace\\Projects\\Hugr\\reports\\alerts.md",
+        "json": "C:\\CodeSpace\\Projects\\Hugr\\reports\\alerts.json"
       }
     }
   ]
