@@ -68,6 +68,11 @@ class PipelineResult:
     manifest: Any = None
     dictionary: Any = None
     alerts: Any = None
+    # Which source this run described. `dtp pipeline --raw data/_synthetic` writes to
+    # the same `reports/` as a run over the real extract, and a report that does not
+    # name its source is one nobody can tell apart from the other six months on -
+    # the same argument that makes `--force` stamp the manifest.
+    raw_dir: Path | None = None
 
     @property
     def ok(self) -> bool:
@@ -89,6 +94,7 @@ class PipelineResult:
             "ok": self.ok,
             "verdict": self.verdict(),
             "version_id": self.version_id,
+            "source": str(self.raw_dir) if self.raw_dir else None,
             "stages": [
                 {"name": s.name, "ok": s.ok, "skipped": s.skipped,
                  "seconds": round(s.seconds, 3), "summary": s.summary,
@@ -126,7 +132,7 @@ def run(raw_dir: Path | None = None, clean_dir: Path | None = None,
     if stop_after is not None and stop_after not in STAGES:
         raise ValueError("stop_after must be one of " + ", ".join(STAGES))
 
-    result = PipelineResult()
+    result = PipelineResult(raw_dir=raw_dir)
 
     def done(stage: str) -> bool:
         """True when this stage is the last one requested."""
@@ -264,6 +270,11 @@ def run(raw_dir: Path | None = None, clean_dir: Path | None = None,
 
 def render_markdown(result: PipelineResult) -> str:
     lines = ["# Pipeline run", "", "**" + result.verdict() + "**", ""]
+    if result.raw_dir is not None:
+        # Named because `--raw` exists: a report over the synthetic fixture and one
+        # over the real extract land in the same file and are otherwise identical in
+        # shape. Whoever reads this months from now needs to know which they have.
+        lines += ["Source: `" + str(result.raw_dir) + "`", ""]
     lines += [s.line() for s in result.stages]
     lines.append("")
     if result.alerts is not None and result.alerts.alerts:

@@ -1,0 +1,92 @@
+name: CI
+
+# Every command in this project is designed to work as a gate - `audit` fails on a
+# BLOCKER risk, `validate` on a failed error rule, `dict` on an undocumented field,
+# `pipeline` on any of those. That claim was in the README with nothing enforcing it.
+#
+# The suite needs no credential, no network and no real data: it runs against a
+# generated fixture with known defects, and the agent's model is a scripted stub. So
+# there is nothing to configure here and no secret to hold.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # Every extra, so the packaging metadata is checked too. `anthropic` is not
+      # needed by any test - the SDK is imported inside `client.AnthropicModel` and
+      # nothing offline reaches it - but an extra that no longer resolves is worth
+      # finding here rather than on someone's first install.
+      - name: Install
+        run: pip install -e ".[dashboard,agent,dev]"
+
+      - name: Console script
+        run: dtp --help
+
+      - name: Tests
+        run: python -m pytest -q
+
+      # The suite writes to tmp_path and the CLI writes to gitignored directories.
+      # A test that quietly edits a committed report is a test that makes the diff
+      # its own output, so fail here instead.
+      - name: Nothing tracked was modified
+        run: git diff --exit-code
+
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # The real dataset is not in the repository, so the gates run against the
+      # fixture the project generates for exactly this purpose. `pipeline` is not
+      # among them: `config/cleaning_rules.yml` names the DataCo sources by column,
+      # so it correctly finds no configured source here. Its stages are covered by
+      # tests/test_pipeline.py against a mini config instead.
+      - name: Generate the messy fixture
+        run: dtp synthetic --rows 500 --outdir data/_synthetic
+
+      - name: Audit gate
+        run: dtp audit --raw data/_synthetic --out /tmp/profiling
+
+      # `pipeline` over the fixture *should* fail at clean: the cleaning config names
+      # the DataCo sources by column, so there is no configured source here. What is
+      # being checked is that a refused run still writes its report, and writes it
+      # where `--reports` said - the flag that keeps a run over another source from
+      # overwriting the committed reports for the real one.
+      - name: A refused run still reports, and to the right place
+        run: |
+          set +e
+          dtp pipeline --raw data/_synthetic --reports /tmp/r --docs /tmp/d
+          code=$?
+          set -e
+          test "$code" -eq 1
+          grep -q 'PIPELINE FAILED at clean' /tmp/r/pipeline-report.md
+          grep -q 'Source: .*data/_synthetic' /tmp/r/pipeline-report.md
+
+      - name: Nothing tracked was modified
+        run: git diff --exit-code

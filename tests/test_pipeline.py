@@ -311,3 +311,45 @@ def test_the_report_of_a_refused_run_names_the_failure(run, failing_rules,
     md = pipe.render_markdown(result)
     assert "PIPELINE FAILED at validate, snapshot" in md
     assert "refused" in md
+
+
+def test_the_report_names_the_source_it_described(run, synthetic_raw, tmp_path):
+    """`--raw` exists, so `reports/` can hold a report about any source.
+
+    A run over `data/_synthetic` and one over the real extract write the same
+    filenames and are otherwise identical in shape, so a reader six months on cannot
+    tell which they have. Same argument as `--force` stamping the manifest: the thing
+    that makes a report readable later is that it says what it was.
+    """
+    result = run()
+    assert result.raw_dir is not None
+    md = pipe.render_markdown(result)
+    assert "Source: `" + str(result.raw_dir) + "`" in md
+    paths = pipe.write_report(result, out_dir=tmp_path / "named")
+    payload = json.loads(paths["json"].read_text(encoding="utf-8"))
+    assert payload["source"] == str(result.raw_dir)
+
+
+def test_the_cli_can_send_the_reports_somewhere_else(mini_raw, mini_config,
+                                                     mini_rules, tmp_path, capsys):
+    """`dtp pipeline --raw elsewhere` used to overwrite the committed reports.
+
+    `reports/pipeline-report.md` and `reports/cleaning-report.*` are checked in and
+    describe the real extract. Running the pipeline over another source replaced them
+    with a report that did not say which source it was - so the flag exists, and it
+    covers the docs too, because the dictionary lands in `docs/`.
+    """
+    from dtp import cli
+
+    out, docs = tmp_path / "elsewhere", tmp_path / "elsedocs"
+    code = cli.main(["pipeline", "--raw", str(mini_raw),
+                     "--config", str(mini_config), "--rules", str(mini_rules),
+                     "--clean", str(tmp_path / "c"),
+                     "--versions", str(tmp_path / "v"),
+                     "--reports", str(out), "--docs", str(docs)])
+    assert code == 0, capsys.readouterr().out
+    assert (out / "pipeline-report.md").exists()
+    assert (out / "cleaning-report.md").exists()
+    assert list(docs.glob("*.md"))
+    # And the report says which source it was, which is the point of the flag.
+    assert str(mini_raw) in (out / "pipeline-report.md").read_text(encoding="utf-8")

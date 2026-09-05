@@ -54,7 +54,11 @@ PIPELINE OK - published snapshot 20260903T012120
 
 Every command exits non-zero on failure, so each works as a CI gate: `audit` on a
 BLOCKER, `validate` on a failed `error` rule, `dict` on an undocumented field,
-`pipeline` on any of those.
+`pipeline` on any of those. [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+runs them, plus the whole suite, on every push — no credential and no dataset needed,
+because the fixture is generated and the agent's model is a stub. It also fails if a
+run modifies a tracked file, since a test that quietly rewrites a committed report
+makes the diff its own output.
 
 ## The one rule worth knowing
 
@@ -81,8 +85,11 @@ flag. Forcing changes what is published, not the verdict: the run still exits 1.
 | `dtp ask "..."` | Phase 3: ask a question about a snapshot; `--repl` for follow-ups, `--stub` for no key |
 
 `--raw`, `--clean`, `--versions`, `--config` and `--rules` override the defaults.
-`pipeline` also takes `--stop-after STAGE` (iterate on rules without publishing),
-`--force`, and `--notes TEXT` for the manifest.
+`--reports` and `--docs` redirect the generated output, which is what you want when
+running against a source other than the usual one: the committed reports describe the
+real extract, and a run over the fixture would otherwise replace them. Every report
+names the source it described. `pipeline` also takes `--stop-after STAGE` (iterate on
+rules without publishing), `--force`, and `--notes TEXT` for the manifest.
 
 Two scripts sit outside the CLI because what they produce is evidence, not data:
 
@@ -404,7 +411,7 @@ src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
 dashboard/       app.py — Streamlit placement only, importing the view layer
 scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run),
                  qa_report.py (the journeys against the real snapshot, timed)
-tests/           923 tests
+tests/           925 tests
 ```
 
 ## Tests
@@ -413,11 +420,11 @@ tests/           923 tests
 python -m pytest
 ```
 
-923 tests, no network, and no dependency on the real dataset — everything runs
+925 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
 hand-built frames. By module: agent question set 137, agent guard 73, agent plan 61,
 insights 77, metrics 58, charts 53, views 47, monitoring 44, agent session 42,
-agent stub 39, clean 37, profile 37, pipeline 28, validate 27, dictionary 26,
+agent stub 39, clean 37, profile 37, pipeline 30, validate 27, dictionary 26,
 versioning 22, warehouse 21, schema_map 20, smoke script 17, dashboard Ask screen 17,
 `dtp ask` 16, end-to-end journeys 13, risks 11. Phase 2's own layers hold 256 of
 them and Phase 3's 402, which is the ratio the layering was for: a boundary nobody

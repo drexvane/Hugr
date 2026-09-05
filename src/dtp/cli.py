@@ -177,7 +177,8 @@ def cmd_clean(args: argparse.Namespace) -> int:
     from . import clean as clean_mod
 
     results, problems, paths = clean_mod.run(
-        raw_dir=args.raw, out_dir=args.clean, config_path=args.config)
+        raw_dir=args.raw, out_dir=args.clean, config_path=args.config,
+        reports_dir=args.reports)
     for p in problems:
         print("  ! " + p)
     if not results:
@@ -198,7 +199,8 @@ def cmd_clean(args: argparse.Namespace) -> int:
 def cmd_validate(args: argparse.Namespace) -> int:
     from . import validate as validate_mod
 
-    report, paths = validate_mod.run(clean_dir=args.clean, rules_path=args.rules)
+    report, paths = validate_mod.run(clean_dir=args.clean, rules_path=args.rules,
+                                     reports_dir=args.reports)
     print("")
     for r in report.results:
         if not r.passed:
@@ -215,7 +217,8 @@ def cmd_dict(args: argparse.Namespace) -> int:
     from . import dictionary as dict_mod
 
     doc, paths = dict_mod.run(clean_dir=args.clean, raw_dir=args.raw,
-                              config_path=args.config, rules_path=args.rules)
+                              config_path=args.config, rules_path=args.rules,
+                              out_dir=args.docs, reports_dir=args.reports)
     print(str(len(doc.fields)) + " field(s) across "
           + str(len(doc.tables())) + " table(s); "
           + format(doc.coverage, ".1f") + "% documented")
@@ -250,6 +253,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     result = pipeline_mod.run(
         raw_dir=args.raw, clean_dir=args.clean, versions_dir=args.versions,
         config_path=args.config, rules_path=args.rules,
+        reports_dir=args.reports, docs_dir=args.docs,
         stop_after=args.stop_after, force_snapshot=args.force, notes=args.notes)
     print("=== dtp pipeline ===")
     for s in result.stages:
@@ -257,7 +261,7 @@ def cmd_pipeline(args: argparse.Namespace) -> int:
     if result.alerts is not None:
         for a in result.alerts.sorted_alerts():
             print("  " + a.line())
-    paths = pipeline_mod.write_report(result)
+    paths = pipeline_mod.write_report(result, out_dir=args.reports)
     print("\n" + result.verdict())
     print("wrote " + _rel(paths["markdown"]))
     return 0 if result.ok else 1
@@ -389,6 +393,13 @@ def build_parser() -> argparse.ArgumentParser:
                        help="override config/validation_rules.yml")
         p.add_argument("--versions", type=Path, default=VERSIONS_DIR,
                        help="snapshot directory (default: data/versions)")
+        p.add_argument("--reports", type=Path, default=None,
+                       help="where reports are written (default: reports/). Point "
+                            "this elsewhere when running against a source other "
+                            "than the usual one, so the committed reports keep "
+                            "describing that one")
+        p.add_argument("--docs", type=Path, default=None,
+                       help="where the data dictionary is written (default: docs/)")
         return p
 
     with_config(sub.add_parser(
