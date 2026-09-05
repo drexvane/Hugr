@@ -232,6 +232,36 @@ def reports(tmp_path: Path) -> Path:
     return tmp_path / "reports"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def committed_reports_are_left_alone():
+    """Fail the run if a test wrote over a *committed* report.
+
+    The docstring above asked nicely and was not enough: `pipeline.write_report`
+    defaults to `reports/`, and one call that forgot `out_dir` replaced the real
+    180,519-row pipeline report with a seven-row fixture's. Nothing failed, and the
+    only evidence was a diff nobody was looking at.
+
+    Scoped to what git tracks, which is the point: `reports/risk-summary.*` is
+    gitignored generated output and several tests write it on purpose. Without git,
+    or outside a checkout, this guard steps aside rather than guessing.
+    """
+    try:
+        listed = subprocess.run(["git", "ls-files", "reports"], cwd=REPO,
+                                capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):        # pragma: no cover
+        yield
+        return
+    tracked = [REPO / line for line in listed.stdout.split()
+               if line.endswith((".md", ".json"))]
+    before = {p: p.read_bytes() for p in tracked if p.exists()}
+    yield
+    changed = [p.name for p, blob in before.items()
+               if not p.exists() or p.read_bytes() != blob]
+    assert not changed, ("a test wrote over the committed reports: "
+                         + ", ".join(changed)
+                         + " - pass out_dir/reports_dir to keep it in tmp_path")
+
+
 # --------------------------------------------------------------------------- #
 # Phase 2 fixture: a snapshot small enough to compute by hand.
 #

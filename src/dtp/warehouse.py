@@ -14,6 +14,9 @@ through here rather than opening Parquet itself. That buys three things:
    lowercase, and the clean tables stay a faithful typed copy of it.
 3. **Read-only by construction.** The connection is opened against `:memory:` and
    the Parquet files are attached as views, so no query can write to a snapshot.
+4. **Safe to share.** One `Warehouse` serves every reader in a process, and `sql`
+   gives each thread its own cursor - a `DuckDBPyConnection` is not thread-safe, and
+   the dashboard caches one warehouse while Streamlit serves sessions on threads.
 
 The fold has to reach past case. The log writes `indoor outdoor games` where the
 fact table writes `Indoor/Outdoor Games`, and case-folding alone leaves those as
@@ -34,7 +37,8 @@ log covers five of the thirty-seven months.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -70,12 +74,22 @@ FOLD = "trim(regexp_replace(lower({col}), '[^a-z0-9]+', ' ', 'g'))"
 
 @dataclass
 class Warehouse:
-    """A read-only DuckDB session over one snapshot."""
+    """A read-only DuckDB session over one snapshot.
+
+    One `Warehouse` is shared by every reader in a process - the dashboard caches it
+    with `st.cache_resource` and Streamlit serves concurrent sessions on threads - so
+    `sql` hands each thread its own cursor. A `DuckDBPyConnection` is not thread-safe:
+    two threads calling it at once raise "Attempting to execute an unsuccessful or
+    closed pending query result", which is what two people clicking at the same time
+    used to produce. Cursors share the database and its catalog, so every view is
+    visible from all of them and nothing is registered twice.
+    """
 
     manifest: version_mod.Manifest
     con: duckdb.DuckDBPyConnection
     path: Path
     _log_window: tuple[str, str] | None = None
+    _local: threading.local = field(default_factory=threading.local, repr=False)
 
     @property
     def version_id(self) -> str:
@@ -85,6 +99,14 @@ class Warehouse:
     def tables(self) -> list[str]:
         return sorted(t.table for t in self.manifest.tables)
 
+    def _cursor(self) -> duckdb.DuckDBPyConnection:
+        """This thread's cursor onto the same database, created once and kept."""
+        cursor = getattr(self._local, "cursor", None)
+        if cursor is None:
+            cursor = self.con.cursor()
+            self._local.cursor = cursor
+        return cursor
+
     def sql(self, query: str, **params: Any) -> pd.DataFrame:
         """Run a query and return a DataFrame.
 
@@ -93,7 +115,8 @@ class Warehouse:
         the statement. Callers building SQL from user or model input must use
         this, not f-strings.
         """
-        rel = self.con.sql(query, params=params) if params else self.con.sql(query)
+        con = self._cursor()
+        rel = con.sql(query, params=params) if params else con.sql(query)
         return rel.df()
 
     def scalar(self, query: str, **params: Any) -> Any:

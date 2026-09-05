@@ -7,9 +7,12 @@ Messy data → clean data → dashboard → AI query agent. Roadmap and phase ga
 cleaning and validation (1.2), the automated pipeline with versioning, a data
 dictionary and alerts (1.3), a six-view dashboard over a semantic metric layer
 (2.1–2.3), and an AI query agent that turns a question into a validated plan rather
-than into SQL (3.1–3.3). Every number below comes from the DataCo Smart Supply Chain
-dataset in [`dataset/`](dataset) — 180,519 order lines and 469,977 web access-log
-rows.
+than into SQL (3.1–3.3). **Phase 4's QA, benchmarking and load testing are done** —
+what remains needs people: user acceptance testing, and a hosting decision that
+carries an access-control task with it
+([`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md)). Every number below comes
+from the DataCo Smart Supply Chain dataset in [`dataset/`](dataset) — 180,519 order
+lines and 469,977 web access-log rows.
 
 ## Quick start
 
@@ -81,6 +84,13 @@ flag. Forcing changes what is published, not the verdict: the run still exits 1.
 `pipeline` also takes `--stop-after STAGE` (iterate on rules without publishing),
 `--force`, and `--notes TEXT` for the manifest.
 
+Two scripts sit outside the CLI because what they produce is evidence, not data:
+
+```bash
+python scripts/qa_report.py       # the critical-path journeys, timed, vs the targets
+python scripts/agent_smoke.py     # the live model run; exits 2 without a key
+```
+
 ## What gets written
 
 | Output | Answers |
@@ -93,8 +103,9 @@ flag. Forcing changes what is published, not the verdict: the run still exits 1.
 | `reports/profiling/profiling_report.md` | per column: type, missing %, distinct count, every defect found |
 | `reports/schema/schema_matrix.md` | which columns across sources mean the same thing, and whether they join |
 | `reports/risk-summary.md` | Phase 1.1 findings ranked BLOCKER → LOW, each with impact and a fix |
+| `reports/qa-report.md` | Phase 4: every critical-path journey against the real snapshot, timed against its target |
 
-Each has a `.json` twin for programmatic use.
+Each has a `.json` twin for programmatic use, except the QA report, which is a log.
 
 ## What cleaning the real data turned up
 
@@ -391,8 +402,9 @@ src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
                  phase 2: warehouse, metrics, insights, charts, dashboard/views
                  phase 3: agent/ — plan, tools, guard, session, client
 dashboard/       app.py — Streamlit placement only, importing the view layer
-scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run)
-tests/           908 tests
+scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run),
+                 qa_report.py (the journeys against the real snapshot, timed)
+tests/           923 tests
 ```
 
 ## Tests
@@ -401,15 +413,23 @@ tests/           908 tests
 python -m pytest
 ```
 
-908 tests, no network, and no dependency on the real dataset — everything runs
+923 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
 hand-built frames. By module: agent question set 137, agent guard 73, agent plan 61,
 insights 77, metrics 58, charts 53, views 47, monitoring 44, agent session 42,
 agent stub 39, clean 37, profile 37, pipeline 28, validate 27, dictionary 26,
-versioning 22, schema_map 20, warehouse 19, smoke script 17, dashboard Ask screen 17,
-`dtp ask` 16, risks 11. Phase 2's own layers hold 254 of them and Phase 3's 402,
-which is the ratio the layering was for: a boundary nobody tests is a convention,
-not a boundary.
+versioning 22, warehouse 21, schema_map 20, smoke script 17, dashboard Ask screen 17,
+`dtp ask` 16, end-to-end journeys 13, risks 11. Phase 2's own layers hold 256 of
+them and Phase 3's 402, which is the ratio the layering was for: a boundary nobody
+tests is a convention, not a boundary.
+
+The end-to-end module is the one that runs the journeys rather than the layers:
+raw files to a published snapshot and the gate that refuses to publish one; that
+snapshot through the warehouse to all six views; a question, a follow-up and a
+refusal in one session; and a fresh clone with no key, no `anthropic` install and no
+`dataset/`. `scripts/qa_report.py` runs the same journeys against the real snapshot
+and times them, because the timings, the privacy boundary and the agent's reading of
+the question set are all things a seven-row fixture cannot measure.
 
 The ones that assert judgement rather than plumbing:
 
@@ -475,6 +495,17 @@ And the agent's, which are mostly about what a model is *not* allowed to reach:
 - every fallback suggestion a refusal offers being asked for real, so a refusal
   cannot hand the user a second refusal
 
+And Phase 4's, which found the two defects nothing single-threaded could:
+
+- eight readers querying one warehouse at once — one DuckDB connection is not
+  thread-safe and the dashboard caches one, so two people clicking at the same time
+  used to raise. `Warehouse.sql` now gives each thread its own cursor, and both
+  concurrency tests fail without it
+- every git-tracked file under `reports/` hashed at session start and checked at the
+  end, because `pipeline.write_report` defaults to the repository's own `reports/` and
+  one test that forgot `out_dir` replaced the real 180,519-row report with a seven-row
+  fixture's. Nothing failed at the time; the only evidence was a diff nobody read
+
 ## Environment notes
 
 Python 3.12 with **pandas 3.x** — Copy-on-Write is default and the default string
@@ -495,4 +526,4 @@ what is still open.
 | 3.1 — Architecture & query layer | done, tested; one tool over the metric registry rather than generated SQL, twelve refusal codes each with a fallback |
 | 3.2 — Agent build | done, tested; 32 reviewed questions in `tests/agent_questions.yml`, the dashboard's own chart selection reused rather than reimplemented |
 | 3.3 — Refinement | done, tested; session memory as a plan patch, a two-layer hallucination guardrail, and `dtp ask` / a dashboard Ask screen over one `Answer`. **The end-to-end log against the real model is `scripts/agent_smoke.py` and wants whoever owns the API spend** |
-| 4 — Testing, polish & launch | not started |
+| 4 — Testing, polish & launch | QA, accuracy benchmarking and load testing done — 6 journeys, 57 checks, 0 failures against the real snapshot; see [`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md). **UAT wants users and launch wants a hosting decision, which carries the access-control task with it** |

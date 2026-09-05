@@ -53,6 +53,48 @@ def test_parameters_are_bound_not_formatted(wh):
     assert int(rows.iat[0, 0]) == 0
 
 
+def test_one_warehouse_serves_concurrent_readers(wh):
+    """Two people clicking at the same time is the normal case, not the edge one.
+
+    One `Warehouse` is cached per process and Streamlit serves its sessions on
+    threads, so this is what the dashboard actually does. A `DuckDBPyConnection` is
+    not thread-safe: before `sql` handed each thread its own cursor, eight readers
+    raised "Attempting to execute an unsuccessful or closed pending query result"
+    within a second, and the load test in `scripts/qa_report.py` is what found it.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    def query(i: int) -> int:
+        frame = wh.sql("SELECT market, count(*) AS n FROM order_items "
+                       "WHERE order_item_sales > $floor GROUP BY 1 ORDER BY 2 DESC",
+                       floor=float(i % 3))
+        return int(frame["n"].sum())
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        counts = list(pool.map(query, range(64)))
+    assert len(counts) == 64
+    assert all(c > 0 for c in counts)
+    # Same floor, same answer: a cursor per thread must not mean a different view of
+    # the data per thread.
+    assert len({c for i, c in enumerate(counts) if i % 3 == 0}) == 1
+
+
+def test_every_thread_sees_the_same_catalogue(wh):
+    # Cursors share the database, so the folded join-key views exist on all of them.
+    # If they did not, a threaded reader would get "table not found" for a view the
+    # main thread can see.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def keys(_: int) -> list[str]:
+        return sorted(wh.sql("SELECT category_key FROM access_logs "
+                             "GROUP BY 1 ORDER BY 1")["category_key"])
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        seen = list(pool.map(keys, range(8)))
+    assert seen[0]
+    assert all(s == seen[0] for s in seen)
+
+
 def test_ident_rejects_a_crafted_table_name():
     assert W._ident("order_items") == '"order_items"'
     for bad in ('a"; DROP TABLE x; --', "order items", "orders;", ""):
