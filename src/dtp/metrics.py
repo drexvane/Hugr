@@ -47,7 +47,7 @@ class Metric:
     label: str
     expr: str                      # ONE aggregate call: sum(x), count(*), avg(x)
     gate: str | None = None
-    unit: str = "count"            # money | percent | days | count | ratio
+    unit: str = "count"            # money | percent | days | count | ratio | measure
     higher_is_better: bool = True
     about: str = ""                # shown in the UI; explains the gate
 
@@ -159,6 +159,30 @@ class Dimension:
     table: str = "order_items"
 
 
+@dataclass
+class Catalog:
+    name: str
+    metrics: dict[str, Metric | Ratio | Measure] = field(default_factory=dict)
+    dimensions: dict[str, Dimension] = field(default_factory=dict)
+    drill_paths: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    schema: Any = None
+    primary_date_col: str | None = None
+
+    def metric(self, key: str) -> Metric | Ratio | Measure:
+        try:
+            return self.metrics[key]
+        except KeyError:
+            raise KeyError("unknown metric " + repr(key) + ". Known: "
+                           + ", ".join(sorted(self.metrics))) from None
+
+    def dimension(self, key: str) -> Dimension:
+        try:
+            return self.dimensions[key]
+        except KeyError:
+            raise KeyError("unknown dimension " + repr(key) + ". Known: "
+                           + ", ".join(sorted(self.dimensions))) from None
+
+
 MONEY = "money"
 PERCENT = "percent"
 DAYS = "days"
@@ -254,20 +278,47 @@ DRILL_PATHS: dict[str, tuple[str, ...]] = {
 }
 
 
-def metric(key: str) -> Metric | Ratio | Measure:
-    try:
+DEFAULT_CATALOG = Catalog(
+    name="order_items",
+    metrics=METRICS,
+    dimensions=DIMENSIONS,
+    drill_paths=DRILL_PATHS,
+    primary_date_col="order_date",
+)
+
+
+_ACTIVE_CATALOG: Catalog | None = None
+
+
+def set_active_catalog(catalog: Catalog | None) -> None:
+    global _ACTIVE_CATALOG
+    _ACTIVE_CATALOG = catalog
+
+
+def get_active_catalog() -> Catalog | None:
+    return _ACTIVE_CATALOG
+
+
+def metric(key: str, catalog: Catalog | None = None) -> Metric | Ratio | Measure:
+    cat = catalog or _ACTIVE_CATALOG
+    target = cat.metrics if cat else METRICS
+    if key in target:
+        return target[key]
+    if METRICS and key in METRICS:
         return METRICS[key]
-    except KeyError:
-        raise KeyError("unknown metric " + repr(key) + ". Known: "
-                       + ", ".join(sorted(METRICS))) from None
+    raise KeyError("unknown metric " + repr(key) + ". Known: "
+                   + ", ".join(sorted(target)))
 
 
-def dimension(key: str) -> Dimension:
-    try:
+def dimension(key: str, catalog: Catalog | None = None) -> Dimension:
+    cat = catalog or _ACTIVE_CATALOG
+    target = cat.dimensions if cat else DIMENSIONS
+    if key in target:
+        return target[key]
+    if DIMENSIONS and key in DIMENSIONS:
         return DIMENSIONS[key]
-    except KeyError:
-        raise KeyError("unknown dimension " + repr(key) + ". Known: "
-                       + ", ".join(sorted(DIMENSIONS))) from None
+    raise KeyError("unknown dimension " + repr(key) + ". Known: "
+                   + ", ".join(sorted(target)))
 
 
 @dataclass
@@ -277,17 +328,21 @@ class Filters:
     date_from: str | None = None
     date_to: str | None = None
     where: dict[str, list[str]] = field(default_factory=dict)
+    date_col: str | None = None
 
-    def clauses(self) -> tuple[list[str], dict[str, Any]]:
+    def clauses(self, catalog: Catalog | None = None) -> tuple[list[str], dict[str, Any]]:
         sql: list[str] = []
         params: dict[str, Any] = {}
-        if self.date_from:
-            sql.append("order_date >= $date_from::TIMESTAMP")
-            params["date_from"] = self.date_from
-        if self.date_to:
-            # Inclusive of the whole final day: the column carries a time.
-            sql.append("order_date < ($date_to::TIMESTAMP + INTERVAL 1 DAY)")
-            params["date_to"] = self.date_to
+        if self.date_from or self.date_to:
+            date_col = self.date_col or (catalog.primary_date_col if catalog else "order_date") or "order_date"
+            date_expr = f'"{date_col}"' if not date_col.startswith('"') and not date_col.isalnum() else date_col
+            if self.date_from:
+                sql.append(f"{date_expr} >= $date_from::TIMESTAMP")
+                params["date_from"] = self.date_from
+            if self.date_to:
+                # Inclusive of the whole final day: the column carries a time.
+                sql.append(f"{date_expr} < ($date_to::TIMESTAMP + INTERVAL 1 DAY)")
+                params["date_to"] = self.date_to
         for i, (key, values) in enumerate(sorted(self.where.items())):
             if not values:
                 continue
@@ -295,55 +350,51 @@ class Filters:
             # `dimension()` validates the key, so only registry SQL reaches the
             # statement; the values themselves are bound.
             sql.append("list_contains($" + name + "::VARCHAR[], CAST("
-                       + dimension(key).expr + " AS VARCHAR))")
+                       + dimension(key, catalog).expr + " AS VARCHAR))")
             params[name] = [str(v) for v in values]
         return sql, params
 
-    def describe(self) -> str:
+    def describe(self, catalog: Catalog | None = None) -> str:
         bits = []
         if self.date_from or self.date_to:
             bits.append((self.date_from or "start") + " to " + (self.date_to or "end"))
         for key, values in sorted(self.where.items()):
             if values:
-                bits.append(dimension(key).label + " in " + ", ".join(map(str, values)))
+                bits.append(dimension(key, catalog).label + " in " + ", ".join(map(str, values)))
         return "; ".join(bits) if bits else "no filters"
 
 
-def _select(metric_keys: list[str]) -> str:
-    return ", ".join(metric(k).sql() + " AS " + k for k in metric_keys)
+def _select(metric_keys: list[str], catalog: Catalog | None = None) -> str:
+    return ", ".join(metric(k, catalog).sql() + " AS " + k for k in metric_keys)
 
 
 def aggregate(wh: Warehouse, metric_keys: list[str], by: list[str] | None = None,
               filters: Filters | None = None, order_by: str | None = None,
-              limit: int | None = None, min_lines: int = 0) -> pd.DataFrame:
-    """One row per combination of `by`, one column per metric.
-
-    `min_lines` drops thin groups *after* aggregation. A category with three
-    gated lines produces a margin that swings on rounding and would top any
-    ranked chart; excluding it is a judgement, so it is a named argument with a
-    default of 0 rather than a hidden constant.
-    """
+              limit: int | None = None, min_lines: int = 0,
+              catalog: Catalog | None = None, table: str | None = None) -> pd.DataFrame:
+    """One row per combination of `by`, one column per metric."""
     by = by or []
     metric_keys = list(metric_keys)
+    cat = catalog or getattr(wh, "catalog", None)
     for key in metric_keys:
-        if not metric(key).aggregatable:
+        m = metric(key, cat)
+        if not m.aggregatable:
             raise KeyError(key + " cannot be grouped by a dimension: it comes "
                            "from a purpose-built query, not from order_items")
-    dims = [dimension(k) for k in by]
+    dims = [dimension(k, cat) for k in by]
 
     filters = filters or Filters()
-    where, params = filters.clauses()
+    where, params = filters.clauses(cat)
 
     select = [d.expr + " AS " + d.key for d in dims]
     if metric_keys:
-        select.append(_select(metric_keys))
-    # Always available for the thin-group test, and cheap. It is also the honest
-    # denominator for a structural question - "how much of this period sits in one
-    # market" is about rows, not about recognised revenue - so `metric_keys` may
-    # legitimately be empty and this is then the only measure returned.
+        select.append(_select(metric_keys, cat))
     select.append("count(*) AS n_lines")
 
-    sql = ["SELECT " + ", ".join(select), "FROM order_items"]
+    table_name = table or (cat.name if cat and cat.name else "order_items")
+    from_clause = f'FROM "{table_name}"' if not table_name.startswith('"') and not table_name.isalnum() else f"FROM {table_name}"
+
+    sql = ["SELECT " + ", ".join(select), from_clause]
     if where:
         sql.append("WHERE " + " AND ".join(where))
     if dims:
@@ -351,8 +402,6 @@ def aggregate(wh: Warehouse, metric_keys: list[str], by: list[str] | None = None
     if min_lines:
         sql.append("HAVING count(*) >= " + str(int(min_lines)))
     if order_by:
-        # Validated against what this query actually produced, so a caller
-        # cannot append arbitrary SQL through the sort control.
         col = order_by.lstrip("-")
         if col not in metric_keys and col not in by and col != "n_lines":
             raise KeyError("cannot order by " + repr(order_by)
@@ -368,39 +417,44 @@ def aggregate(wh: Warehouse, metric_keys: list[str], by: list[str] | None = None
 
 
 def totals(wh: Warehouse, metric_keys: list[str],
-           filters: Filters | None = None) -> dict[str, Any]:
+           filters: Filters | None = None,
+           catalog: Catalog | None = None) -> dict[str, Any]:
     """The KPI row: one value per metric, no grouping."""
-    df = aggregate(wh, metric_keys, filters=filters)
+    df = aggregate(wh, metric_keys, filters=filters, catalog=catalog)
     if df.empty:
         return {k: None for k in metric_keys}
     return {k: df.iloc[0][k] for k in [*metric_keys, "n_lines"]}
 
 
 def timeseries(wh: Warehouse, metric_keys: list[str], grain: str = "month",
-               filters: Filters | None = None) -> pd.DataFrame:
-    if grain not in DRILL_PATHS["time"]:
-        raise KeyError("grain must be one of " + ", ".join(DRILL_PATHS["time"]))
-    return aggregate(wh, metric_keys, by=[grain], filters=filters)
+               filters: Filters | None = None,
+               catalog: Catalog | None = None) -> pd.DataFrame:
+    cat = catalog or getattr(wh, "catalog", None)
+    drill = cat.drill_paths.get("time", DRILL_PATHS["time"]) if cat else DRILL_PATHS["time"]
+    if grain not in drill:
+        raise KeyError("grain must be one of " + ", ".join(drill))
+    return aggregate(wh, metric_keys, by=[grain], filters=filters, catalog=cat)
 
 
-def date_bounds(wh: Warehouse) -> tuple[pd.Timestamp, pd.Timestamp]:
-    """The window the fact table actually covers, for the date control's limits."""
-    df = wh.sql("SELECT min(order_date) AS lo, max(order_date) AS hi "
-                "FROM order_items")
+def date_bounds(wh: Warehouse, catalog: Catalog | None = None) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """The window the table covers, for the date control's limits."""
+    cat = catalog or getattr(wh, "catalog", None)
+    table_name = cat.name if cat and cat.name else "order_items"
+    date_col = cat.primary_date_col if cat and cat.primary_date_col else "order_date"
+    date_expr = f'"{date_col}"' if not date_col.startswith('"') and not date_col.isalnum() else date_col
+    from_expr = f'"{table_name}"' if not table_name.startswith('"') and not table_name.isalnum() else table_name
+    df = wh.sql(f"SELECT min({date_expr}) AS lo, max({date_expr}) AS hi FROM {from_expr}")
     return pd.Timestamp(df.iat[0, 0]), pd.Timestamp(df.iat[0, 1])
 
 
-def dimension_values(wh: Warehouse, key: str, limit: int = 200) -> list[str]:
-    """Distinct values of one dimension, most common first - for a filter box.
-
-    Ties break alphabetically rather than arbitrarily. `ORDER BY n DESC` alone
-    leaves equally common values in whatever order the scan produced, so the list
-    reshuffles between runs - and a filter widget that remembers a selection by
-    position would then reopen on a different value.
-    """
-    dim = dimension(key)
+def dimension_values(wh: Warehouse, key: str, limit: int = 200,
+                     catalog: Catalog | None = None) -> list[str]:
+    cat = catalog or getattr(wh, "catalog", None)
+    dim = dimension(key, cat)
+    table_name = dim.table or (cat.name if cat and cat.name else "order_items")
+    from_expr = f'"{table_name}"' if not table_name.startswith('"') and not table_name.isalnum() else table_name
     df = wh.sql("SELECT CAST(" + dim.expr + " AS VARCHAR) AS v, count(*) AS n "
-                "FROM order_items WHERE " + dim.expr + " IS NOT NULL "
+                f"FROM {from_expr} WHERE " + dim.expr + " IS NOT NULL "
                 "GROUP BY 1 ORDER BY n DESC, v LIMIT " + str(int(limit)))
     return df["v"].tolist()
 

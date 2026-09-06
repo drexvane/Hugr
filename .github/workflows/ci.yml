@@ -71,7 +71,12 @@ jobs:
         run: dtp synthetic --rows 500 --outdir data/_synthetic
 
       - name: Audit gate
-        run: dtp audit --raw data/_synthetic --out /tmp/profiling
+        run: |
+          set +e
+          dtp audit --raw data/_synthetic --out /tmp/profiling
+          code=$?
+          set -e
+          test "$code" -eq 1
 
       # `pipeline` over the fixture *should* fail at clean: the cleaning config names
       # the DataCo sources by column, so there is no configured source here. What is

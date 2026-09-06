@@ -125,35 +125,25 @@ def _gate_note(metric_keys: list[str]) -> str:
 TIME_DIMS = frozenset(M.DRILL_PATHS["time"])
 
 
+def get_time_dims() -> frozenset[str]:
+    cat = M.get_active_catalog()
+    if cat and "time" in cat.drill_paths:
+        return frozenset(cat.drill_paths["time"]) | TIME_DIMS
+    return TIME_DIMS
+
+
 def choose(dims: list[str], metric_keys: list[str], n_rows: int = 0) -> str:
-    """The chart type a result's shape justifies: the Phase 3 selector, usable now.
-
-    Deliberately a function of shape alone - keys and a row count, no data - so
-    it can be tested exhaustively and so the dashboard and the agent cannot
-    disagree about what a two-dimension, one-metric result looks like.
-
-    The ordering of the tests matters more than the tests themselves:
-
-    1. A time dimension wins over everything. A monthly result plotted as a bar
-       chart sorted by value destroys the one thing a series is for.
-    2. Two dimensions and one metric is a heatmap. Grouped bars over 4x5 cells
-       are 20 bars a reader has to pair up by colour.
-    3. Two *metrics* over one dimension is a scatter, because the question is the
-       relationship, not either value's ranking.
-    4. Long or numerous labels go horizontal - a rotated 60-character product
-       name is unreadable at any font size.
-    5. Anything else has no honest chart, and the answer is "table" rather than
-       a chart that implies a comparison the shape does not support.
-    """
+    """The chart type a result's shape justifies: the Phase 3 selector, usable now."""
     dims = list(dims)
     metric_keys = list(metric_keys)
     if not metric_keys:
         return "table"
     if not dims:
         return "kpi"
-    if len(dims) == 1 and dims[0] in TIME_DIMS:
+    time_dims = get_time_dims()
+    if len(dims) == 1 and dims[0] in time_dims:
         return "line"
-    if len(dims) == 2 and TIME_DIMS.intersection(dims) and len(metric_keys) == 1:
+    if len(dims) == 2 and time_dims.intersection(dims) and len(metric_keys) == 1:
         return "line_grouped"
     if len(dims) == 2 and len(metric_keys) == 1:
         return "heatmap"
@@ -168,19 +158,15 @@ def choose(dims: list[str], metric_keys: list[str], n_rows: int = 0) -> str:
 
 def auto_figure(df: pd.DataFrame, dims: list[str], metric_keys: list[str],
                 title: str = "", **kwargs: Any) -> go.Figure | None:
-    """Draw whatever `choose` picked. `None` means "no chart is honest: show the rows".
-
-    Returning None rather than raising is the deliberate choice: a caller that
-    asked for a chart of a 4-dimension result should render a table, not fail.
-    Both callers - the dashboard and the agent - handle None the same way.
-    """
+    """Draw whatever `choose` picked. `None` means "no chart is honest: show the rows"."""
     kind = choose(dims, metric_keys, len(df))
     if kind in ("table", "kpi"):
         return None
     if kind == "line":
         return line_series(df, dims[0], metric_keys, title=title, **kwargs)
     if kind == "line_grouped":
-        time_dim = next(d for d in dims if d in TIME_DIMS)
+        time_dims = get_time_dims()
+        time_dim = next(d for d in dims if d in time_dims)
         other = next(d for d in dims if d != time_dim)
         return line_grouped(df, time_dim, other, metric_keys[0], title=title,
                             **kwargs)

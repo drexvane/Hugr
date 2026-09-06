@@ -293,30 +293,15 @@ _SMALL = 100             # below this, an undecorated integer is a count, not a 
 
 def _kind_of(column: str) -> str:
     """The candidate kind for a frame column, by its registry unit."""
-    if column in M.METRICS:
-        return _UNIT_KIND.get(M.metric(column).unit, "count")
-    return "count"       # n_lines, and anything the executor adds
+    try:
+        met = M.metric(column)
+        return _UNIT_KIND.get(met.unit, "count")
+    except KeyError:
+        return "count"       # n_lines, and anything the executor adds
 
 
 def _candidates(frame: pd.DataFrame) -> dict[str, set[float]]:
-    """Every number a truthful sentence about this frame could contain.
-
-    Four families, and the reason for each:
-
-    * the values themselves, and their column totals and means - the sentence is
-      usually about one of these;
-    * pairwise differences within a column - "Europe's margin is 6.7 points below
-      Asia's" is a claim about a pair, not a value;
-    * pairwise ratios and each value's share of its column total, as percentages -
-      "38% of revenue" and "twice Asia's" are both readings of a pair;
-    * the shape: the row count. An integer in "the top 5 categories" is checked
-      against it positionally instead, because that is prose about the size of the
-      result rather than a claim about a value.
-
-    Bounded by `_PAIR_ROWS` so a 200-row frame is O(900) pairs per column rather
-    than O(40,000). The rows that carry the extremes are the ones a summary talks
-    about, and `execute()` sorts before it truncates.
-    """
+    """Every number a truthful sentence about this frame could contain."""
     out: dict[str, set[float]] = {
         "money": set(), "percent": set(), "days": set(),
         "count": set(), "shape": set()}
@@ -336,17 +321,12 @@ def _candidates(frame: pd.DataFrame) -> dict[str, set[float]]:
         total = sum(head)
         running = 0.0
         for i, a in enumerate(head):
-            # Prefix sums, because "the top 3 markets hold $29.70M" is a claim
-            # about the head of a sorted frame and nothing else derives it.
             running += a
             out[kind].add(running)
             if total:
                 out["percent"].add(100.0 * a / total)
             for b in head[i + 1:]:
                 out[kind].add(abs(a - b))
-                # A ratio of two values is a percentage claim, never a bare count.
-                # Both the share ("38% of Asia's") and the relative gap ("4.8%
-                # ahead") are legitimate readings, so both are derived.
                 if b:
                     out["percent"].add(100.0 * a / b)
                     out["percent"].add(100.0 * (a / b - 1.0))
@@ -362,14 +342,12 @@ _MIN_LABEL = 3           # shorter than this is not distinctive enough to match 
 
 
 def _labels(frame: pd.DataFrame) -> list[str]:
-    """Every group name this frame legitimately mentions, longest first.
-
-    Both the formatted form and the raw one, because a month is `Jan 2018` in
-    prose and `2018-01-01 00:00:00` in the column, and either may be echoed.
-    """
+    """Every group name this frame legitimately mentions, longest first."""
+    cat = M.get_active_catalog()
+    dims = cat.dimensions if cat else M.DIMENSIONS
     out: set[str] = set()
     for column in frame.columns:
-        if column not in M.DIMENSIONS:
+        if column not in dims:
             continue
         for value in frame[column].dropna().unique():
             out.add(M.fmt_dim(column, value))

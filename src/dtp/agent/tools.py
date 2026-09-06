@@ -32,11 +32,13 @@ HEAD_ROWS = 12       # rows of the frame the summary call is shown
 MAX_CELL = 60        # characters of a group label; a product name can run long
 
 
-def _metric_lines() -> list[str]:
+def _metric_lines(catalog: M.Catalog | None = None) -> list[str]:
+    cat = catalog or M.get_active_catalog()
+    metrics_map = cat.metrics if cat else M.METRICS
     out = []
-    for key, met in M.METRICS.items():
+    for key, met in metrics_map.items():
         bits = [key, "(" + met.unit + ")", "-", met.label]
-        if not met.aggregatable:
+        if not getattr(met, "aggregatable", True):
             bits.append("[funnel only]")
         if met.about:
             bits.append("- " + met.about)
@@ -44,25 +46,26 @@ def _metric_lines() -> list[str]:
     return out
 
 
-def _dimension_lines() -> list[str]:
+def _dimension_lines(catalog: M.Catalog | None = None) -> list[str]:
+    cat = catalog or M.get_active_catalog()
+    dims_map = cat.dimensions if cat else M.DIMENSIONS
     return [key + " - " + dim.label
-            for key, dim in M.DIMENSIONS.items()]
+            for key, dim in dims_map.items()]
 
 
-def tool_schema() -> dict[str, Any]:
-    """The one tool, with every enum taken from the registry.
+def tool_schema(catalog: M.Catalog | None = None) -> dict[str, Any]:
+    """The one tool, with every enum taken from the registry."""
+    cat = catalog or M.get_active_catalog()
+    metrics_map = cat.metrics if cat else M.METRICS
+    dims_map = cat.dimensions if cat else M.DIMENSIONS
+    time_grains = list(cat.drill_paths.get("time", P.TIME_GRAINS)) if cat else list(P.TIME_GRAINS)
 
-    `metrics` and `by` are enums rather than free strings so a well-behaved model
-    cannot even name a column that does not exist - but `plan.validate()` refuses
-    the same thing again, because a schema is a request and a validator is a
-    guarantee.
-    """
-    metric_keys = list(M.METRICS)
-    dim_keys = [k for k in M.DIMENSIONS if k not in P.TIME_GRAINS]
+    metric_keys = list(metrics_map)
+    dim_keys = [k for k in dims_map if k not in time_grains]
     return {
         "name": TOOL_NAME,
         "description":
-            "Answer a question about the order data by naming registry metrics "
+            "Answer a question about the dataset by naming registry metrics "
             "and dimensions. Code turns this into one SQL query with the correct "
             "gates applied; you never write SQL and never state a figure yourself.",
         "input_schema": {
@@ -83,7 +86,7 @@ def tool_schema() -> dict[str, Any]:
                 },
                 "grain": {
                     "type": "string",
-                    "enum": list(P.TIME_GRAINS),
+                    "enum": time_grains,
                     "description":
                         "Set only when the question is about change over time.",
                 },
@@ -112,21 +115,17 @@ def tool_schema() -> dict[str, Any]:
                 "min_lines": {
                     "type": "integer",
                     "description":
-                        "Drop groups with fewer than this many order lines. Use "
-                        "it when ranking a rate, where a group of three lines "
-                        "would otherwise top the chart.",
+                        "Exclude groups with fewer than this many records.",
                 },
                 "kind": {
                     "type": "string",
                     "enum": list(P.KINDS),
-                    "description":
-                        "'funnel' for page views against orders; 'aggregate' "
-                        "otherwise. Setting a funnel metric is enough.",
+                    "description": "Defaults to 'aggregate'. Set to 'funnel' only when asking about conversion.",
                 },
                 "funnel_by": {
                     "type": "string",
                     "enum": list(P.FUNNEL_DIMS),
-                    "description": "Grouping for the funnel query.",
+                    "description": "Group the funnel by this dimension.",
                 },
             },
             "required": ["metrics"],
@@ -151,17 +150,14 @@ Rules, in the order they matter:
    the question needs something not listed, do not substitute the nearest thing -
    reply with {tag} and one sentence naming what is missing.
 3. Reply with {tag} and one sentence, calling no tool, for a question that:
-   asks who a customer is, or for a name, email, street or IP (this data holds
+   asks who an individual is, or for a name, email, street or IP (this data holds
    them; naming a person is not something this platform does); asks *why*
    something happened (it reports what, not why); asks for a forecast (nothing
    here is fitted to predict); asks to change the data (the warehouse is
    read-only); or asks to run SQL.
 4. A ranking question wants `order_by` and a `limit`. A "how has X changed"
    question wants `grain`. A question about one slice wants `where`.
-5. When ranking a rate (margin, on-time, view-to-order), set `min_lines` to about
-   100, or a group of three lines tops the chart on rounding noise.
-6. Prefer `revenue` over `revenue_ungated` always. The ungated figure exists only
-   so the difference can be shown, and it overstates revenue by $1.57M.
+5. When ranking a rate, set `min_lines` to about 100 to avoid noise from tiny groups.
 """
 
 
@@ -174,26 +170,23 @@ def system_prompt(wh: Warehouse | None = None,
     which is what makes "break that down by region" a two-key tool call instead of
     a re-parse of a conversation it cannot see.
     """
+    cat = getattr(wh, "catalog", None) if wh else M.get_active_catalog()
+    dataset_name = cat.name if cat else "this dataset"
+    time_grains = list(cat.drill_paths.get("time", P.TIME_GRAINS)) if cat else list(P.TIME_GRAINS)
     parts = [
-        "You turn a question about a supply-chain dataset into one call of the "
+        "You turn a question about " + dataset_name + " into one call of the "
         + TOOL_NAME + " tool. You are the intent parser for a reporting "
         "platform, not its calculator.",
-        "",
-        "The data: order lines from a retailer, with delivery, geography, product "
-        "and customer-segment columns, plus a web access log. Figures are gated - "
-        "cancelled and suspected-fraud lines carry full money values and a "
-        "delivery delay for shipments that never happened, so every metric below "
-        "already excludes them where it should.",
         "",
         _window_line(wh),
         "",
         "Metrics:",
-        *("  " + line for line in _metric_lines()),
+        *("  " + line for line in _metric_lines(cat)),
         "",
         "Dimensions (group by these):",
-        *("  " + line for line in _dimension_lines()),
+        *("  " + line for line in _dimension_lines(cat)),
         "",
-        "  Periods: use grain=" + "/".join(P.TIME_GRAINS)
+        "  Periods: use grain=" + "/".join(time_grains)
         + " and date_from/date_to, never where={\"year\": ...}.",
         "",
         _RULES.format(tag=DECLINE_TAG),
@@ -218,13 +211,13 @@ def _window_line(wh: Warehouse | None) -> str:
     """
     if wh is None:
         return ("The snapshot covers a fixed window; a date outside it is "
-                "refused by code with the real window named.")
-    lo, hi = M.date_bounds(wh)
-    log_lo, log_hi = M.log_window(wh)
-    return ("Window: orders run " + lo.strftime("%Y-%m-%d") + " to "
-            + hi.strftime("%Y-%m-%d") + ". The access log - and so page views and "
-            "the view-to-order rate - covers only " + str(log_lo)[:10] + " to "
-            + str(log_hi)[:10] + ", which is why the funnel is its own query.")
+                "outside the data.")
+    try:
+        lo, hi = M.date_bounds(wh)
+        return ("This snapshot covers " + lo.strftime("%Y-%m-%d") + " to "
+                + hi.strftime("%Y-%m-%d") + ".")
+    except Exception:
+        return "This dataset is loaded into the warehouse."
 
 
 def _json(value: Any) -> str:

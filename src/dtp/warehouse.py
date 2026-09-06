@@ -90,6 +90,53 @@ class Warehouse:
     path: Path
     _log_window: tuple[str, str] | None = None
     _local: threading.local = field(default_factory=threading.local, repr=False)
+    catalog: Any = None
+
+    @classmethod
+    def from_df(cls, df: pd.DataFrame, name: str = "dataset") -> "Warehouse":
+        """Create an in-memory Warehouse session from any DataFrame with auto-discovered catalog."""
+        from .schema_discovery import discover_schema, create_catalog_from_schema
+        con = duckdb.connect(":memory:")
+        con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+        schema = discover_schema(df, table_name=name)
+        cat = create_catalog_from_schema(schema)
+        table_entry = version_mod.TableVersion(
+            table=name, file=name + ".parquet", rows=len(df),
+            columns=len(df.columns), dtypes={str(c): str(t) for c, t in df.dtypes.items()},
+            null_counts={str(c): int(df[c].isna().sum()) for c in df.columns},
+            content_hash="memory",
+        )
+        manifest = version_mod.Manifest(
+            version_id="memory", created_at="now", dtp_version="1.0",
+            source_dir="memory", tables=[table_entry],
+        )
+        return cls(manifest=manifest, con=con, path=Path("memory"), catalog=cat)
+
+    @classmethod
+    def from_tables(cls, tables: dict[str, pd.DataFrame]) -> "Warehouse":
+        """Create an in-memory Warehouse session from a mapping of table_name -> DataFrame."""
+        from .schema_discovery import discover_schema, create_catalog_from_schema
+        con = duckdb.connect(":memory:")
+        table_entries = []
+        primary_catalog = None
+        for name, df in tables.items():
+            con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+            table_entry = version_mod.TableVersion(
+                table=name, file=name + ".parquet", rows=len(df),
+                columns=len(df.columns), dtypes={str(c): str(t) for c, t in df.dtypes.items()},
+                null_counts={str(c): int(df[c].isna().sum()) for c in df.columns},
+                content_hash="memory",
+            )
+            table_entries.append(table_entry)
+            if primary_catalog is None:
+                schema = discover_schema(df, table_name=name)
+                primary_catalog = create_catalog_from_schema(schema)
+
+        manifest = version_mod.Manifest(
+            version_id="memory", created_at="now", dtp_version="1.0",
+            source_dir="memory", tables=table_entries,
+        )
+        return cls(manifest=manifest, con=con, path=Path("memory"), catalog=primary_catalog)
 
     @property
     def version_id(self) -> str:
@@ -188,7 +235,20 @@ def open_warehouse(version_id: str | None = None,
     con = duckdb.connect(":memory:")
     for table in manifest.tables:
         con.execute(_view_sql(table.table, target / table.file))
-    return Warehouse(manifest=manifest, con=con, path=target)
+
+    cat = None
+    table_names = [t.table for t in manifest.tables]
+    if "order_items" in table_names:
+        from .metrics import DEFAULT_CATALOG
+        cat = DEFAULT_CATALOG
+    elif table_names:
+        from .schema_discovery import discover_schema, create_catalog_from_schema
+        first_table = table_names[0]
+        first_df = con.execute('SELECT * FROM "' + first_table + '" LIMIT 1000').fetchdf()
+        schema = discover_schema(first_df, table_name=first_table)
+        cat = create_catalog_from_schema(schema)
+
+    return Warehouse(manifest=manifest, con=con, path=target, catalog=cat)
 
 
 def available_versions(versions_dir: Path | None = None) -> list[version_mod.Manifest]:

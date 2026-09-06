@@ -147,8 +147,10 @@ def cmd_audit(args: argparse.Namespace) -> int:
             + str(tp.n_cols) + " cols, " + str(tp.n_issues) + " finding(s)"
         )
 
-    mx, schema_paths = schema_map.run(profiles, REPORTS_DIR / "schema")
-    reg, risk_paths = risks_mod.run(profiles, mx, REPORTS_DIR)
+    schema_out = (args.out / "schema") if args.out else (REPORTS_DIR / "schema")
+    risk_out = args.out or REPORTS_DIR
+    mx, schema_paths = schema_map.run(profiles, schema_out)
+    reg, risk_paths = risks_mod.run(profiles, mx, risk_out)
     _print_risks(reg)
 
     print("\nReports")

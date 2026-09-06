@@ -270,15 +270,15 @@ def validate(plan: Plan, wh: Warehouse | None = None) -> Plan:
 
     if out.kind not in KINDS:
         raise refuse("unparseable", "Unknown plan kind " + repr(out.kind) + ".")
-    _check_metrics(out, notes)
+    _check_metrics(out, notes, wh)
     if out.kind == "funnel":
         return _validate_funnel(out, notes)
-    _check_dims(out, notes)
+    _check_dims(out, notes, wh)
     # `where` first: a `{"year": ["2017"]}` filter becomes a date range, and the
     # range it becomes has to face the same window check as one the model wrote.
     _check_where(out, notes, wh)
     _check_dates(out, notes, wh)
-    _check_sort(out, notes)
+    _check_sort(out, notes, wh)
     if out.min_lines < 0:
         raise refuse("unparseable", "`min_lines` cannot be negative.")
     return replace(out, notes=tuple(notes))
@@ -310,21 +310,41 @@ _FUNNEL_METRICS = tuple(k for k, m in M.METRICS.items() if not m.aggregatable)
 _FUNNEL_COLUMNS = (*_FUNNEL_METRICS, "orders", "lines", "revenue")
 
 
-def _check_metrics(plan: Plan, notes: list[str]) -> None:
+def _get_active_metrics(wh: Warehouse | None = None) -> dict[str, Any]:
+    cat = getattr(wh, "catalog", None) or M.get_active_catalog()
+    return cat.metrics if cat else M.METRICS
+
+
+def _get_active_dimensions(wh: Warehouse | None = None) -> dict[str, Any]:
+    cat = getattr(wh, "catalog", None) or M.get_active_catalog()
+    return cat.dimensions if cat else M.DIMENSIONS
+
+
+def _get_active_time_grains(wh: Warehouse | None = None) -> tuple[str, ...]:
+    cat = getattr(wh, "catalog", None) or M.get_active_catalog()
+    if cat and "time" in cat.drill_paths:
+        return cat.drill_paths["time"]
+    return TIME_GRAINS
+
+
+def _check_metrics(plan: Plan, notes: list[str], wh: Warehouse | None = None) -> None:
+    active_metrics = _get_active_metrics(wh)
     keys = list(dict.fromkeys(plan.metrics))          # order-preserving dedupe
     for key in keys:
-        if key not in M.METRICS:
-            near = _near(key, list(M.METRICS))
+        if key not in active_metrics:
+            near = _near(key, list(active_metrics))
             raise refuse(
                 "unknown_metric",
                 repr(key) + " is not a metric here.",
-                tuple(near) or (_listing(list(M.METRICS)),))
+                tuple(near) or (_listing(list(active_metrics)),))
     if not keys:
-        # `aggregate` defends the no-metric case - a group's share of the rows is a
-        # real question - but an answer with no measure has no chart and no
-        # sentence, so the honest default is the row count under its registry name.
-        keys = ["lines"]
-        notes.append("no metric was named, so this counts order lines")
+        if "lines" in active_metrics:
+            keys = ["lines"]
+            notes.append("no metric was named, so this counts order lines")
+        else:
+            default_key = "row_count" if "row_count" in active_metrics else list(active_metrics.keys())[0]
+            keys = [default_key]
+            notes.append(f"no metric was named, so this counts {default_key}")
     wrong_shape = [k for k in keys if k in _FUNNEL_METRICS]
     if wrong_shape and plan.kind == "aggregate":
         if all(k in _FUNNEL_COLUMNS for k in keys) and _funnel_shaped(plan):
@@ -377,19 +397,21 @@ def _validate_funnel(plan: Plan, notes: list[str]) -> Plan:
                    notes=tuple(notes))
 
 
-def _check_dims(plan: Plan, notes: list[str]) -> None:
-    if plan.grain is not None and plan.grain not in TIME_GRAINS:
+def _check_dims(plan: Plan, notes: list[str], wh: Warehouse | None = None) -> None:
+    active_dims = _get_active_dimensions(wh)
+    time_grains = _get_active_time_grains(wh)
+    if plan.grain is not None and plan.grain not in time_grains:
         raise refuse("unknown_dimension",
-                     repr(plan.grain) + " is not a time grain.", TIME_GRAINS)
+                     repr(plan.grain) + " is not a time grain.", time_grains)
     keys: list[str] = []
     for key in dict.fromkeys(plan.by):
-        if key not in M.DIMENSIONS:
-            near = _near(key, list(M.DIMENSIONS))
+        if key not in active_dims:
+            near = _near(key, list(active_dims))
             raise refuse(
                 "unknown_dimension",
                 repr(key) + " is not a column in this dataset.",
-                tuple(near) or (_listing(list(M.DIMENSIONS), limit=15),))
-        if key in TIME_GRAINS:
+                tuple(near) or (_listing(list(active_dims), limit=15),))
+        if key in time_grains:
             # A grain asked for as a grouping is the same request spelled the other
             # way. Moving it keeps `execute()`'s routing to `timeseries()` intact,
             # which is the only call that guarantees one row per period.
@@ -456,14 +478,16 @@ def _date(value: str | None, name: str) -> pd.Timestamp | None:
 
 
 def _check_where(plan: Plan, notes: list[str], wh: Warehouse | None) -> None:
+    active_dims = _get_active_dimensions(wh)
+    time_grains = _get_active_time_grains(wh)
     out: dict[str, list[str]] = {}
     for key, values in plan.where.items():
-        if key not in M.DIMENSIONS:
-            near = _near(key, list(M.DIMENSIONS))
+        if key not in active_dims:
+            near = _near(key, list(active_dims))
             raise refuse("unknown_dimension",
                          "Cannot filter on " + repr(key) + ".",
-                         tuple(near) or (_listing(list(M.DIMENSIONS), limit=15),))
-        if key in TIME_GRAINS:
+                         tuple(near) or (_listing(list(active_dims), limit=15),))
+        if key in time_grains:
             # A period is a window, not a value to match. A four-digit year is
             # unambiguous so it is translated; a month or quarter is not, and
             # guessing a format is how a filter silently matches nothing.
@@ -515,29 +539,30 @@ def _canonical(wh: Warehouse, key: str, values: list[str]) -> list[str]:
     return out
 
 
-def _check_sort(plan: Plan, notes: list[str]) -> None:
+def _check_sort(plan: Plan, notes: list[str], wh: Warehouse | None = None) -> None:
     if plan.limit is not None and plan.limit <= 0:
         plan.limit = None
     if plan.limit is not None and plan.limit > MAX_LIMIT:
         plan.limit = MAX_LIMIT
         notes.append("limited to " + str(MAX_LIMIT) + " rows")
 
+    active_metrics = _get_active_metrics(wh)
     if plan.order_by:
         column = plan.order_by.lstrip("-")
         if column not in plan.metrics and column not in plan.dims() \
                 and column != "n_lines":
-            if column in M.METRICS:
+            if column in active_metrics:
                 # Sorting by a figure is asking to see it. Adding the column is
                 # what the question meant, and `aggregate` would refuse the sort.
                 plan.metrics = [*plan.metrics, column]
                 notes.append(column + " was added because the sort is on it")
             else:
-                near = _near(column, [*M.METRICS, *plan.dims()])
+                near = _near(column, [*active_metrics, *plan.dims()])
                 raise refuse("unknown_metric",
                              "Cannot sort by " + repr(column)
                              + ": it is not part of this answer.",
                              tuple(near) or tuple(plan.metrics))
-    elif plan.dims() and not plan.grain:
+    elif plan.dims() and not plan.grain and plan.metrics:
         # A ranked question with no stated sort is a ranking by its own measure;
         # a time series is chronological, which `aggregate` already does.
         plan.order_by = "-" + plan.metrics[0]
