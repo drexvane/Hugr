@@ -70,6 +70,18 @@ def _open(version_id: str | None):
     return warehouse.open_warehouse(version_id)
 
 
+@st.cache_resource(show_spinner=False)
+def _sample_warehouse():
+    """Fallback sample warehouse when no local snapshot has been published."""
+    sample_csv = REPO / "data" / "sample_datasets" / "ecommerce_orders.csv"
+    if sample_csv.exists():
+        import pandas as pd
+        sample_df = pd.read_csv(sample_csv)
+        return warehouse.Warehouse.from_df(sample_df, name="ecommerce_orders")
+    import pandas as pd
+    return warehouse.Warehouse.from_df(pd.DataFrame({"value": [1]}), name="dataset")
+
+
 @st.cache_data(show_spinner=False)
 def _values(version_id: str, key: str) -> list[str]:
     """A filter box's options. Cached per snapshot, because they never change
@@ -85,11 +97,16 @@ def _bounds(version_id: str):
 
 def _sidebar() -> tuple[str, M.Filters, int, str]:
     """The controls, and the four things the views need from them."""
-    st.sidebar.title("DataCo supply chain")
     ids = V.snapshot_ids()
     if not ids:
-        st.sidebar.error("No snapshot found under data/versions.")
-        st.stop()
+        st.sidebar.title("Hugr Analytics")
+        st.sidebar.caption("✦ Universal AI Data Analyst")
+        st.sidebar.info("Universal Ingestion mode active. Upload any CSV or Excel file to analyze, or ask questions on sample data.")
+        view = st.sidebar.radio("View", [ASK], format_func=lambda k: ASK_TITLE)
+        _privacy_note()
+        return "universal", M.Filters(date_from="", date_to="", where={}), 0, view
+
+    st.sidebar.title("DataCo supply chain")
     version_id = st.sidebar.selectbox(
         "Snapshot", ids, index=0,
         help="Newest first, and ordered in the view layer rather than here so the "
@@ -295,7 +312,10 @@ def _ask_screen(wh, version_id: str) -> None:
         col_count = st.session_state.get("uploaded_cols", 0)
     elif getattr(wh, "manifest", None) and wh.manifest.tables:
         t_entry = wh.manifest.tables[0]
-        dataset_display_name = f"DataCo Supply Chain ({t_entry.table})"
+        if "ecommerce_orders" in t_entry.table:
+            dataset_display_name = "Sample: E-Commerce Orders"
+        else:
+            dataset_display_name = f"DataCo Supply Chain ({t_entry.table})"
         row_count, col_count = t_entry.rows, t_entry.columns
     else:
         dataset_display_name = "Connected Dataset"
@@ -435,6 +455,9 @@ def main() -> None:
     if key == ASK and "uploaded_warehouse" in st.session_state:
         wh = st.session_state["uploaded_warehouse"]
         ask_version = wh.version_id
+    elif version_id == "universal":
+        wh = _sample_warehouse()
+        ask_version = "ecommerce_orders"
     else:
         wh = _open(version_id)
         ask_version = version_id

@@ -188,5 +188,23 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - Dashboard test suite: 109 passed, 0 failed.
   - Full repo test suite: **1,005 passed**, 0 failed, 0 regressions.
 
+---
 
-
+## Log Entry 008: Universal Ingestion & Localhost Fallback Resilience
+- **Date**: 2026-09-06
+- **Context**: When running `streamlit run dashboard/app.py` in standalone localhost environments where offline Parquet snapshots under `data/versions/` have not been generated, the sidebar previously emitted `st.sidebar.error("No snapshot found under data/versions.")` and halted via `st.stop()`. This resulted in a blank dark screen preventing the AI-first starting experience, CSV/XLSX uploader, and Ask screen from initializing.
+- **Decisions & Implementation**:
+  1. **Resilient Sidebar Fallback (`dashboard/app.py`)**:
+     - When `V.snapshot_ids()` returns empty, the app transitions seamlessly into Universal Ingestion Mode instead of halting.
+     - Sidebar renders `"Hugr Analytics"` branding, `"✦ Universal AI Data Analyst"` caption, and defaults navigation to `ASK` view.
+     - Preserves existing snapshot picker and multi-view navigation when offline snapshots are present.
+  2. **In-Memory Sample Warehouse Fallback (`_sample_warehouse`)**:
+     - If no user file has been uploaded yet and no snapshot exists, loads `data/sample_datasets/ecommerce_orders.csv` via `Warehouse.from_df()` into DuckDB.
+     - The active dataset pill renders `"Sample: E-Commerce Orders"` with accurate row/column metrics (4,622 rows, 5 columns).
+     - Starter prompts dynamically derive from the sample schema, allowing immediate zero-setup conversational analysis.
+     - Once the user uploads a custom CSV/XLSX, the uploaded dataset cleanly replaces the fallback sample in `st.session_state`.
+  3. **Harness Verification & Invariance**:
+     - Added `test_app_boots_cleanly_without_snapshots` to `tests/test_phase1_initial_experience.py`.
+     - Confirmed all 1,006 tests pass with 0 regressions.
+- **Verification**:
+  - Full repo test suite: **1,006 passed**, 0 failed.

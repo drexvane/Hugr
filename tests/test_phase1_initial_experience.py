@@ -114,3 +114,18 @@ def test_app_ask_screen_initial_experience_layout(asking):
     # No metrics or warnings before query is asked
     assert asking.metric.values == []
     assert asking.warning.values == []
+
+
+def test_app_boots_cleanly_without_snapshots(tmp_path, monkeypatch):
+    """Verify that Hugr launches gracefully into Universal Ingestion mode even if data/versions is empty."""
+    monkeypatch.setattr(warehouse, "VERSIONS_DIR", tmp_path)
+    monkeypatch.setattr(versioning, "VERSIONS_DIR", tmp_path)
+    monkeypatch.setattr(client, "api_key", lambda: None)
+    st.cache_resource.clear()
+    st.cache_data.clear()
+    at = AppTest.from_file(str(APP), default_timeout=180)
+    at.run()
+    assert not at.exception
+    assert len(at.text_input) == 1
+    assert [b.label for b in at.button] == ["Ask"]
+    assert "Hugr" in at.sidebar.title[0].value
