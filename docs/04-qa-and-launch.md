@@ -188,6 +188,49 @@ Sign-off belongs at the bottom of that file, with a name and a date, because
 `docs/00-success-metrics.md` still has three empty sign-off rows and this is one of
 them.
 
+## Deploying it
+
+The hosting decision is not made here. What is here is the mechanics — a `Dockerfile`,
+a `.dockerignore` and a `docker-compose.yml` at the repository root — so that when the
+decision is made the remaining work is a `docker push` and a DNS record rather than a
+project.
+
+```bash
+docker compose up --build                                   # local, no gate
+DTP_DASHBOARD_PASSWORD=a-long-enough-secret docker compose up --build
+```
+
+**The image contains no data, and that is the only irreversible thing in this
+section.** `order_items` carries customer names, street addresses and 3,340 client
+IPs. A running process can be fixed and restarted; an image cannot — whatever is
+inside it is inside every registry it was pushed to, every layer cache, and every
+`docker save` tarball anyone made. So `.dockerignore` keeps `data/` and `dataset/` out
+of the build context entirely, the `COPY` lines name `src/`, `dashboard/` and
+`config/` rather than `.`, and the snapshot arrives as a read-only bind mount at
+runtime. `tests/test_deploy.py` fails if any of that changes, including a later
+`COPY . .`
+
+The rest of the container: Python 3.12 to match `requires-python`, dependencies from
+the pinned `requirements.txt` so an image built next month is the one that was tested,
+a non-root user, Streamlit's own `/_stcore/health` as the health check, telemetry off,
+and `--server.address=0.0.0.0` inside the container with the compose file publishing
+on `127.0.0.1` only. Binding `0.0.0.0` on a laptop puts this on every network that
+laptop is on, which is the accident the whole section is about.
+
+**What the host still has to provide**, and none of it is guessable from here:
+
+| | |
+|---|---|
+| A secret store | `DTP_DASHBOARD_PASSWORD`, or `DTP_DASHBOARD_PASSWORD_SHA256` if you would rather not keep the plaintext. Every platform has one; none of them is a `.env` file in the image. |
+| The snapshot | A volume holding `data/versions/`, or a build step that runs `dtp pipeline` against a mounted source. The container has no dataset and no way to make one. |
+| TLS, and something in front | The password gate travels in a form post. Over plain HTTP that is a password on the wire. A reverse proxy or the platform's own ingress terminates TLS; Cloudflare Access, Tailscale or a VPN in front of it is what turns the gate into something closer to access control. |
+| A decision about the agent | `ANTHROPIC_API_KEY` unset means the Ask screen runs the keyless matcher and says so, which is a fine default for a hosted demo. Setting it means the deployment starts spending. |
+
+**Still not access control.** Everything above makes hosting *possible*. It does not
+make a shared password into identity: nothing can be revoked for one person or
+attributed to one person, and that is the item in the table below rather than a task
+that got done here.
+
 ## What needs a person
 
 | Item | Who | What is blocked, and what happens meanwhile |

@@ -1,0 +1,40 @@
+# What must never reach the build context, and why.
+#
+# The first block is the point of this file: the clean tables carry customer names,
+# street addresses and 3,340 client IPs. Anything here is out of every layer, every
+# registry push and every `docker save` tarball. A snapshot is mounted at runtime
+# instead. `tests/test_deploy.py` fails if these lines go.
+data/
+dataset/
+.env
+.env.*
+!.env.example
+*.key
+credentials.json
+
+# Generated evidence. Reports describe a run, not the application, and a stale one in
+# an image is worse than none.
+reports/
+
+# Not needed to serve a dashboard, and each one is layer weight or noise.
+.git/
+.github/
+.gitignore
+.claude/
+tests/
+scripts/
+docs/
+project_roadmap.md
+pytest.ini
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/

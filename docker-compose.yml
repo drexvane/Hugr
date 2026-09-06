@@ -1,0 +1,26 @@
+# One command to run the dashboard the way a host would, without a host.
+#
+#   docker compose up --build                                   # no gate, local only
+#   DTP_DASHBOARD_PASSWORD=a-long-enough-secret docker compose up --build
+#
+# The snapshot is a read-only bind mount, not a copy: this file must not be the reason
+# customer names end up inside an image. `docs/04-qa-and-launch.md` has the rest.
+
+services:
+  dashboard:
+    build: .
+    ports:
+      # 127.0.0.1 on purpose. Binding 0.0.0.0 on a developer machine puts this on
+      # every network the machine is on, which is the accident this whole section of
+      # the docs exists to prevent.
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./data/versions:/app/data/versions:ro
+    environment:
+      # Empty means no gate, which is right for a local run and wrong for a host.
+      DTP_DASHBOARD_PASSWORD: "${DTP_DASHBOARD_PASSWORD:-}"
+      DTP_DASHBOARD_PASSWORD_SHA256: "${DTP_DASHBOARD_PASSWORD_SHA256:-}"
+      # The agent falls back to its keyless matcher when this is unset, and says so.
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      DTP_AGENT_MODEL: "${DTP_AGENT_MODEL:-}"
+    restart: unless-stopped

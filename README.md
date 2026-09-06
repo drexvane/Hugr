@@ -7,13 +7,14 @@ Messy data → clean data → dashboard → AI query agent. Roadmap and phase ga
 cleaning and validation (1.2), the automated pipeline with versioning, a data
 dictionary and alerts (1.3), a six-view dashboard over a semantic metric layer
 (2.1–2.3), and an AI query agent that turns a question into a validated plan rather
-than into SQL (3.1–3.3). **Phase 4's QA, benchmarking and load testing are done**, and
-CI now runs the suite and the CLI gates on every push. What remains needs people: user
-acceptance testing, and a decision on whether a shared-secret gate is enough to host
-this data — a password gate exists and is off by default, and it is not identity
-([`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md)). Every number below comes
-from the DataCo Smart Supply Chain dataset in [`dataset/`](dataset) — 180,519 order
-lines and 469,977 web access-log rows.
+than into SQL (3.1–3.3). **Phase 4's QA, benchmarking and load testing are done**, CI
+runs the suite and the CLI gates on every push, and the dashboard ships as a container
+that carries no data. What remains needs people rather than code: a UAT participant —
+the session is written out task by task — and a decision on whether a shared-secret
+gate is enough to host this data. A password gate exists, is off by default, and is
+not identity ([`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md)). Every number
+below comes from the DataCo Smart Supply Chain dataset in [`dataset/`](dataset) —
+180,519 order lines and 469,977 web access-log rows.
 
 ## Quick start
 
@@ -315,6 +316,23 @@ team, which wants a real identity provider and is the decision still open.
 [`docs/02-dashboard-design.md`](docs/02-dashboard-design.md) has the whole
 argument, including what the build changed.
 
+To run it the way a host would:
+
+```bash
+DTP_DASHBOARD_PASSWORD=a-long-enough-secret docker compose up --build
+```
+
+**The image carries no data.** `.dockerignore` keeps `data/` and `dataset/` out of the
+build context, the `COPY` lines name `src/`, `dashboard/` and `config/` rather than
+`.`, and the snapshot arrives as a read-only bind mount — because a running process
+can be fixed and restarted while an image is in every registry it was pushed to and
+every `docker save` tarball anyone made, and `order_items` holds customer names,
+streets and 3,340 client IPs. `tests/test_deploy.py` fails if that changes. What the
+host still has to supply — a secret store, the snapshot volume, TLS and something in
+front of the gate — is in
+[`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md#deploying-it), and none of it
+turns a shared password into identity.
+
 The layering is the part worth copying: `warehouse.py` owns all SQL, `metrics.py`
 is the only module that writes analytical SQL and carries the gate with each
 metric, `insights.py` writes none, `charts.py` returns Plotly figures and imports
@@ -428,9 +446,10 @@ src/dtp/         phase 1: clean, validate, versioning, dictionary, monitoring,
                  phase 3: agent/ — plan, tools, guard, session, client
                  phase 4: dashboard/auth — the optional password gate
 dashboard/       app.py — Streamlit placement only, importing the view layer
+Dockerfile       the dashboard as a container, carrying no data
 scripts/         make_synthetic_messy.py, agent_smoke.py (key-gated live run),
                  qa_report.py (the journeys against the real snapshot, timed)
-tests/           948 tests
+tests/           962 tests
 ```
 
 ## Tests
@@ -439,15 +458,15 @@ tests/           948 tests
 python -m pytest
 ```
 
-948 tests, no network, and no dependency on the real dataset — everything runs
+962 tests, no network, and no dependency on the real dataset — everything runs
 against a seven-row fixture with deliberately injected defects or against
 hand-built frames. By module: agent question set 137, agent guard 73, agent plan 61,
 insights 77, metrics 58, charts 53, views 47, monitoring 44, agent session 42,
 agent stub 39, clean 37, profile 37, pipeline 30, validate 27, dictionary 26,
 dashboard auth 23, versioning 22, warehouse 21, schema_map 20, smoke script 17,
-dashboard Ask screen 17, `dtp ask` 16, end-to-end journeys 13, risks 11. Phase 2's own
-layers hold 256 of them and Phase 3's 402, which is the ratio the layering was for: a
-boundary nobody tests is a convention, not a boundary.
+dashboard Ask screen 17, `dtp ask` 16, deployment files 14, end-to-end journeys 13,
+risks 11. Phase 2's own layers hold 256 of them and Phase 3's 402, which is the ratio
+the layering was for: a boundary nobody tests is a convention, not a boundary.
 
 The end-to-end module is the one that runs the journeys rather than the layers:
 raw files to a published snapshot and the gate that refuses to publish one; that
@@ -557,4 +576,4 @@ what is still open.
 | 3.1 — Architecture & query layer | done, tested; one tool over the metric registry rather than generated SQL, twelve refusal codes each with a fallback |
 | 3.2 — Agent build | done, tested; 32 reviewed questions in `tests/agent_questions.yml`, the dashboard's own chart selection reused rather than reimplemented |
 | 3.3 — Refinement | done, tested; session memory as a plan patch, a two-layer hallucination guardrail, and `dtp ask` / a dashboard Ask screen over one `Answer`. **The end-to-end log against the real model is `scripts/agent_smoke.py` and wants whoever owns the API spend** |
-| 4 — Testing, polish & launch | QA, accuracy benchmarking and load testing done — 6 journeys, 57 checks, 0 failures against the real snapshot; see [`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md). CI runs the suite and the CLI gates on every push, and the dashboard has an optional password gate so a hosted demo need not be open. **UAT wants users; launch wants a decision on whether a shared secret is enough for this data, and it is not enough outside the team** |
+| 4 — Testing, polish & launch | QA, accuracy benchmarking and load testing done — 6 journeys, 57 checks, 0 failures against the real snapshot; see [`docs/04-qa-and-launch.md`](docs/04-qa-and-launch.md). CI runs the suite and the CLI gates on every push, the dashboard has an optional password gate, the container carries no data, and the UAT session is written out task by task. **UAT wants a participant and half an hour; launch wants a decision on whether a shared secret is enough for this data, and it is not enough outside the team** |
