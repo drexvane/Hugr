@@ -66,3 +66,33 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - `tests/test_universal_agent_e2e.py`: 56+ natural language questions tested across all 6 domains and live Ollama LLM execution; all 7 test suites passed (100%).
   - Full repo test suite: **983 passed**, 0 failed, 0 regressions.
 
+---
+
+## Log Entry 004: Phase 1 — Initial Experience Implementation
+- **Date**: 2026-09-06
+- **Context**: Implement Phase 1 of the Hugr user experience as defined in `docs/UI_DESIGN_SPEC.md`: strong AI-first starting interaction, question input, CSV/XLSX ingestion entry point, branding, and polished intentional composition that does not feel empty or cluttered.
+- **Decisions & Implementation**:
+  1. **Authoritative UI/UX Design Specification (`docs/UI_DESIGN_SPEC.md` & `UI.md`)**:
+     - Formulated explicit design tokens: `#090d16` canvas background, glassmorphism (`rgba(15, 23, 42, 0.65)` with backdrop blur), primary accent gradient (indigo `#6366f1` -> purple `#a855f7` -> cyan `#06b6d4`), and typography (`Outfit` for display/headings, `Inter` for body).
+     - Strict adherence to core constraint: Real data only; no fake or hardcoded analytical numbers.
+  2. **Modular Style & Component Architecture (`src/dtp/dashboard/style.py`)**:
+     - `inject_custom_css()`: Injects custom CSS rules for dark canvas, glow accents, glassmorphic cards, and responsive grids.
+     - `render_brand_header()`: Top brand identity with glowing glyph `✦`, wordmark `Hugr`, and `Universal AI Data Analyst` pill.
+     - `render_dataset_pill()`: Live indicator pill displaying active dataset name, row count, and column count with glowing status dot.
+     - `render_hero_intro()`: Centered typographic hero inviting natural language queries.
+     - `render_initial_cards()`: 3 capability cards (Ask Naturally, Dynamic Discovery, Hallucination Guard) providing a balanced, intentional initial state that never feels barren.
+     - `get_starter_prompts(wh)`: Generates real, schema-derived starter prompts dynamically from `wh.catalog` measures and dimensions (e.g. `total <measure> by <dim>`, `average <measure> by <dim>`, `top 5 <dim> by <measure>`).
+  3. **Universal CSV/XLSX Ingestion Entry Point (`dashboard/app.py`)**:
+     - Embedded `st.file_uploader` supporting `.csv`, `.xlsx`, and `.xls` files.
+     - Loads datasets via `pd.read_csv` or `pd.read_excel` (using `openpyxl`).
+     - Mounts uploaded datasets into DuckDB via `Warehouse.from_df()` with automated column discovery.
+     - Seamlessly swaps the active `Session` and dataset status pill without breaking view routing.
+     - Clean clearing mechanism to revert to the default warehouse snapshot when files are removed.
+  4. **Backward Compatibility & Harness Verification**:
+     - Preserved exact Streamlit widget contracts tested in `tests/test_dashboard_ask.py` (`st.title(ASK_TITLE)` presence, single question input widget, single button before query execution, caption conventions).
+     - All 17 `test_dashboard_ask.py` tests pass without modification.
+     - Added dedicated test suite `tests/test_phase1_initial_experience.py` covering CSS tokens, dynamic prompts, ingestion flow, and `AppTest` rendering.
+- **Verification**:
+  - `tests/test_phase1_initial_experience.py`: 5 passed.
+  - Dashboard test suite: 92 passed, 0 failed.
+  - Full repo test suite: **988 passed**, 0 failed, 0 regressions.

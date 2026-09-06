@@ -40,9 +40,11 @@ from dtp import metrics as M                                  # noqa: E402
 from dtp import warehouse                                     # noqa: E402
 from dtp.dashboard import auth                                # noqa: E402
 from dtp.dashboard import views as V                          # noqa: E402
+from dtp.dashboard import style                               # noqa: E402
 
-st.set_page_config(page_title="DataCo supply chain", page_icon="\N{PACKAGE}",
+st.set_page_config(page_title="Hugr — AI Data Analyst", page_icon="\u2726",
                    layout="wide")
+style.inject_custom_css()
 
 # Order status is deliberately not offered. Every money metric already excludes
 # cancelled and suspected-fraud lines, so filtering to CANCELED would return zeros
@@ -259,20 +261,80 @@ def _render_answer(answer) -> None:
 
 
 def _ask_screen(wh, version_id: str) -> None:
+    style.render_brand_header()
+
+    if "uploaded_warehouse" in st.session_state:
+        dataset_display_name = st.session_state.get("uploaded_file_name", "Uploaded Dataset")
+        row_count = st.session_state.get("uploaded_rows", 0)
+        col_count = st.session_state.get("uploaded_cols", 0)
+    elif getattr(wh, "manifest", None) and wh.manifest.tables:
+        t_entry = wh.manifest.tables[0]
+        dataset_display_name = f"DataCo Supply Chain ({t_entry.table})"
+        row_count, col_count = t_entry.rows, t_entry.columns
+    else:
+        dataset_display_name = "Connected Dataset"
+        row_count, col_count = 0, 0
+
+    style.render_dataset_pill(dataset_display_name, row_count, col_count)
+
+    session = _session(wh, version_id)
+
+    if not session.log:
+        style.render_hero_intro()
+
     st.title(ASK_TITLE, anchor=False)
     st.caption("Natural language in, the same charts and the same numbers out. "
                "Every figure is computed here; the model only chooses which.")
-    session = _session(wh, version_id)
+
+    uploaded_file = st.file_uploader(
+        "Upload CSV or Excel dataset",
+        type=["csv", "xlsx", "xls"],
+        help="Upload any tabular CSV or Excel dataset to explore immediately. Hugr auto-discovers columns, metrics, and dimensions.",
+        key="hugr_uploader",
+    )
+    if uploaded_file is not None:
+        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+        if st.session_state.get("current_uploaded_file_id") != file_id:
+            try:
+                import re
+                import pandas as pd
+                if uploaded_file.name.endswith((".xlsx", ".xls")):
+                    df = pd.read_excel(uploaded_file)
+                else:
+                    df = pd.read_csv(uploaded_file)
+
+                clean_name = Path(uploaded_file.name).stem.lower()
+                clean_name = re.sub(r"[^a-z0-9_]+", "_", clean_name).strip("_") or "dataset"
+
+                new_wh = warehouse.Warehouse.from_df(df, name=clean_name)
+                st.session_state["uploaded_warehouse"] = new_wh
+                st.session_state["uploaded_file_name"] = uploaded_file.name
+                st.session_state["uploaded_rows"] = len(df)
+                st.session_state["uploaded_cols"] = len(df.columns)
+                st.session_state["current_uploaded_file_id"] = file_id
+                from dtp.agent import Session
+                st.session_state["ask_session"] = Session(new_wh, _model(), new_wh.version_id)
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Error ingesting {uploaded_file.name}: {exc}")
+    elif "uploaded_warehouse" in st.session_state and uploaded_file is None:
+        del st.session_state["uploaded_warehouse"]
+        st.session_state.pop("uploaded_file_name", None)
+        st.session_state.pop("uploaded_rows", None)
+        st.session_state.pop("uploaded_cols", None)
+        st.session_state.pop("current_uploaded_file_id", None)
+        st.session_state.pop("ask_session", None)
+        st.rerun()
+
+    starter_prompts = style.get_starter_prompts(wh)
+    placeholder_text = starter_prompts[0] if starter_prompts else "revenue and margin by category"
 
     with st.form("ask_form", clear_on_submit=False):
         question = st.text_input(
-            "Question", placeholder="revenue and margin by category",
+            "Question", placeholder=placeholder_text,
             label_visibility="collapsed")
         asked = st.form_submit_button("Ask", type="primary")
 
-    # The question is asked, and a reset applied, before anything below is drawn - so
-    # the hints and the answer on screen describe the same state. Rendering first and
-    # acting second put every one of them an interaction behind.
     if asked and question.strip():
         with st.spinner("Asking..."):
             session.ask(question)
@@ -282,18 +344,18 @@ def _ask_screen(wh, version_id: str) -> None:
         session.reset()
         session.log.clear()
 
-    from dtp.agent.session import EXAMPLES
-
-    st.caption("Try: " + "  ·  ".join(EXAMPLES))
+    st.caption("Try: " + "  ·  ".join(starter_prompts))
     if session.plan is not None:
         st.caption("Follow-ups patch the last plan, so \"break that down by "
                    "region\" keeps everything else.")
 
     if session.log:
         _render_answer(session.log[-1])
-    for earlier in reversed(session.log[:-1]):
-        with st.expander(earlier.question):
-            _render_answer(earlier)
+        for earlier in reversed(session.log[:-1]):
+            with st.expander(earlier.question):
+                _render_answer(earlier)
+    else:
+        style.render_initial_cards()
 
 
 # --------------------------------------------------------------------------- #
@@ -347,10 +409,16 @@ def _gate() -> None:
 def main() -> None:
     _gate()
     version_id, filters, min_lines, key = _sidebar()
-    wh = _open(version_id)
+
+    if key == ASK and "uploaded_warehouse" in st.session_state:
+        wh = st.session_state["uploaded_warehouse"]
+        ask_version = wh.version_id
+    else:
+        wh = _open(version_id)
+        ask_version = version_id
 
     if key == ASK:
-        _ask_screen(wh, version_id)
+        _ask_screen(wh, ask_version)
         return
     if key == "health":
         _render(V.data_health(version_id=version_id))
