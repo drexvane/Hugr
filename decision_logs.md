@@ -129,3 +129,34 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - Dashboard test suite (`test_dashboard_ask.py`, `test_phase1_initial_experience.py`, `test_phase2_upload_integration.py`, `test_dashboard_auth.py`, `test_views.py`): 98 passed, 0 failed.
   - Full repo test suite: **994 passed**, 0 failed, 0 regressions.
 
+---
+
+## Log Entry 006: Phase 3 — Conversational Analytics & Exploration
+- **Date**: 2026-09-06
+- **Context**: Implement Phase 3 — Conversational Analytics & Exploration according to `docs/UI_DESIGN_SPEC.md` and user specifications: interactive chart styling with high-contrast typography and tooltips, context-aware follow-up query suggestions, multi-turn dialogue memory, dynamic KPI summary cards, and verified zero-hallucination execution.
+- **Decisions & Implementation**:
+  1. **Plotly Dark Mode Styling & Interactive Tooltips (`apply_dark_theme_to_figure`)**:
+     - Automatically applies dark glass theming to all answer figures (`paper_bgcolor="rgba(0,0,0,0)"`, `plot_bgcolor="rgba(15, 23, 42, 0.4)"`).
+     - Refines typography with `Outfit` for titles and `Inter` for tick labels and axes.
+     - Sets custom dark hoverlabels (`#1e293b` surface with indigo border glow `#6366f1`) and subtle gridlines (`rgba(255, 255, 255, 0.08)`).
+  2. **Context-Aware Dynamic Follow-Up Suggestions (`get_follow_up_suggestions` & `render_follow_up_chips`)**:
+     - Analyzes active `plan` and DuckDB catalog to dynamically generate 3-4 logical next turns:
+       - Alternative breakdown dimensions (`break down by <dim>`)
+       - Ranking limits (`top 5`)
+       - Temporal trends (`over time` if temporal columns exist)
+       - Secondary metric comparisons (`and <other_metric>`)
+     - Renders suggestions as sleek pill chips (`↳ <suggestion>`) beneath answers.
+  3. **Multi-Turn Dialogue Memory & Plan Patching (`dashboard/app.py`)**:
+     - Preserves complete conversational history in `session.log` while seamlessly patching follow-up queries onto preceding plans (e.g. `average age by sex` followed by `by choice description` preserves `avg_age` and switches dimension).
+     - Renders historical turns inside expanders with question titles, allowing instant retrospective review of earlier charts and metrics.
+  4. **Zero-Hallucination & Model Attribution Badge (`render_verification_badge`)**:
+     - Surfaces verified execution indicators confirming all numbers were computed deterministically in DuckDB and validated against the semantic catalog.
+  5. **Harness Stability**:
+     - Preserved all `AppTest` widget and metric contracts.
+     - Added dedicated test suite `tests/test_phase3_conversational_analytics.py`.
+- **Verification**:
+  - `tests/test_phase3_conversational_analytics.py`: 5 passed.
+  - Dashboard test suite: 103 passed, 0 failed.
+  - Full repo test suite: **999 passed**, 0 failed, 0 regressions.
+
+

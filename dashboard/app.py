@@ -234,7 +234,7 @@ def _session(wh, version_id: str):
     return session
 
 
-def _render_answer(answer) -> None:
+def _render_answer(answer, wh=None) -> None:
     if not answer.ok:
         st.warning(answer.refusal.message, icon="\N{NO ENTRY SIGN}")
         return
@@ -242,7 +242,8 @@ def _render_answer(answer) -> None:
     if answer.tiles:
         _render_tiles(answer.tiles)
     if answer.figure is not None:
-        st.plotly_chart(answer.figure, width="stretch",
+        themed_fig = style.apply_dark_theme_to_figure(answer.figure)
+        st.plotly_chart(themed_fig, width="stretch",
                         config={"displaylogo": False})
     if answer.frame is not None:
         with st.expander("The rows behind it", expanded=answer.figure is None):
@@ -259,6 +260,10 @@ def _render_answer(answer) -> None:
         st.caption("Filled in by " + answer.model + ", validated against the "
                    "registry, then executed by `metrics.aggregate`. No SQL came "
                    "from the model.")
+    if wh is not None and getattr(answer, "plan", None):
+        follow_ups = style.get_follow_up_suggestions(answer.plan, wh)
+        style.render_follow_up_chips(follow_ups)
+
 
 
 def _ask_screen(wh, version_id: str) -> None:
@@ -347,10 +352,10 @@ def _ask_screen(wh, version_id: str) -> None:
                    "region\" keeps everything else.")
 
     if session.log:
-        _render_answer(session.log[-1])
+        _render_answer(session.log[-1], wh=wh)
         for earlier in reversed(session.log[:-1]):
             with st.expander(earlier.question):
-                _render_answer(earlier)
+                _render_answer(earlier, wh=wh)
     else:
         style.render_initial_cards()
 

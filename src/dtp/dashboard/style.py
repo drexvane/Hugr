@@ -346,6 +346,79 @@ div[data-testid="stMetricValue"] {
     border-color: rgba(6, 182, 212, 0.3);
     color: #a5f3fc;
 }
+
+/* Phase 3: Conversational Analytics & Exploration */
+.hugr-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.8rem 0 1.2rem 0;
+}
+
+.hugr-chips-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-right: 0.25rem;
+}
+
+.hugr-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    padding: 0.28rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: #c7d2fe;
+    transition: all 0.2s ease;
+}
+
+.hugr-chip:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #ffffff;
+}
+
+.hugr-verification-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 500;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    margin: 0.5rem 0;
+}
+
+.hugr-turn-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.hugr-insight-card {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(12px);
+    border-left: 3px solid #6366f1;
+    border-radius: 0 10px 10px 0;
+    padding: 0.85rem 1.1rem;
+    margin: 0.8rem 0;
+    color: #f1f5f9;
+}
 </style>
 """
 
@@ -570,4 +643,107 @@ def render_dataset_readiness(result: Any) -> None:
                 notes.extend(list(cleaning.numeric_coercions.values()))
             if notes:
                 st.caption("Cleaning applied: " + " · ".join(notes))
+
+
+def apply_dark_theme_to_figure(fig: Any) -> Any:
+    """Apply modern dark glass theme and refined typography to Plotly figure."""
+    if fig is None:
+        return None
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15, 23, 42, 0.4)",
+        font=dict(family="Inter, -apple-system, sans-serif", color="#f8fafc", size=12),
+        title_font=dict(family="Outfit, -apple-system, sans-serif", color="#f8fafc", size=15),
+        hoverlabel=dict(
+            bgcolor="#1e293b",
+            bordercolor="rgba(99, 102, 241, 0.4)",
+            font=dict(family="Inter, -apple-system, sans-serif", color="#f8fafc", size=12),
+        ),
+    )
+    fig.update_xaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        tickfont=dict(color="#94a3b8"),
+        title_font=dict(color="#cbd5e1"),
+    )
+    fig.update_yaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        tickfont=dict(color="#94a3b8"),
+        title_font=dict(color="#cbd5e1"),
+    )
+    return fig
+
+
+def get_follow_up_suggestions(plan: Any, wh: Any) -> list[str]:
+    """Derive context-aware follow-up queries from the active plan and catalog."""
+    if plan is None:
+        return []
+
+    cat = getattr(wh, "catalog", None)
+    all_dims = list(cat.dimensions.keys()) if cat and getattr(cat, "dimensions", None) else []
+    all_metrics = list(cat.metrics.keys()) if cat and getattr(cat, "metrics", None) else []
+    active_by = list(plan.by) if getattr(plan, "by", None) else []
+    active_metrics = list(plan.metrics) if getattr(plan, "metrics", None) else []
+
+    suggestions: list[str] = []
+
+    # 1. Alternative breakdown by another dimension
+    unused_dims = [d for d in all_dims if d not in active_by]
+    if unused_dims:
+        clean_dim = unused_dims[0].replace("_", " ")
+        suggestions.append(f"break down by {clean_dim}")
+        if len(unused_dims) > 1:
+            clean_dim2 = unused_dims[1].replace("_", " ")
+            suggestions.append(f"by {clean_dim2}")
+
+    # 2. Ranking limit
+    if getattr(plan, "limit", None) is None:
+        suggestions.append("top 5")
+
+    # 3. Temporal trend
+    time_grains = getattr(cat, "time_grains", {}) if cat else {}
+    if time_grains and not getattr(plan, "grain", None):
+        suggestions.append("over time")
+
+    # 4. Compare with secondary metric
+    unused_metrics = [m for m in all_metrics if m not in active_metrics and (m.startswith("sum_") or m.startswith("avg_"))]
+    if unused_metrics:
+        clean_metric = unused_metrics[0].replace("sum_", "").replace("avg_", "").replace("_", " ")
+        suggestions.append(f"and {clean_metric}")
+
+    return suggestions[:4]
+
+
+def render_follow_up_chips(suggestions: list[str]) -> None:
+    """Render sleek pill chips suggesting logical next turns."""
+    if not suggestions:
+        return
+    chips_html = "".join([f'<span class="hugr-chip">↳ {s}</span>' for s in suggestions])
+    st.markdown(
+        f"""
+        <div class="hugr-chips-container">
+            <span class="hugr-chips-label">Suggested follow-ups:</span>
+            {chips_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_verification_badge(model_name: str) -> None:
+    """Render zero-hallucination verification badge."""
+    st.markdown(
+        f"""
+        <div class="hugr-verification-badge">
+            <span>🛡️ Verified Result</span>
+            <span>·</span>
+            <span>Computed by DuckDB OLAP Engine</span>
+            <span>·</span>
+            <span>Planned by {model_name}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
