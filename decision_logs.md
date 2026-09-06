@@ -96,3 +96,36 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - `tests/test_phase1_initial_experience.py`: 5 passed.
   - Dashboard test suite: 92 passed, 0 failed.
   - Full repo test suite: **988 passed**, 0 failed, 0 regressions.
+
+---
+
+## Log Entry 005: Phase 2 — Upload Integration & Dataset Readiness
+- **Date**: 2026-09-06
+- **Context**: Implement Phase 2 — Upload Integration ensuring robust end-to-end processing of real user files (CSV, TSV, XLSX, XLS) without fake/sample data, executing: `Upload → Ingestion → Cleaning → Profiling → Schema Discovery → Catalog → DuckDB`. Clearly communicate dataset readiness without UI clutter, preserving the active dataset for subsequent analysis phases.
+- **Decisions & Implementation**:
+  1. **Universal Tabular Ingestion Engine (`src/dtp/ingest.py`)**:
+     - Unified `ingest_tabular(source, filename, sheet_name=None) -> IngestionResult`.
+     - Supports byte buffers, file paths, and Excel workbooks (`.xlsx`, `.xls` via `openpyxl`).
+     - Automated encoding detection (`utf-8`, `utf-8-sig`, `cp1252`, `latin-1`) and CSV delimiter sniffing (`csv.Sniffer`).
+     - Header sanitization and deduplication.
+  2. **Audit-Grade Data Cleaning (`clean_dataframe`)**:
+     - Strips leading and trailing whitespace across all string cells.
+     - Replaces sentinel null forms (`"", "-", "--", "n/a", "na", "nan", "null", "none", "?", "#n/a"`) with `np.nan` while avoiding destructive removal of legitimate statuses (e.g. `pending`).
+     - Coerces formatted numeric text (currency `$`, `€`, `£`, percent `%`, and comma thousand-separators `1,234.50`) into clean numeric floats when >= 80% of non-null cells conform.
+     - Produces a structured `CleaningSummary` tracking every transformation.
+  3. **Comprehensive Data Readiness Profiling (`profile_dataset`)**:
+     - Calculates total rows, columns, cells, missing cell percentage, and overall `quality_score` (`100 - missing_pct`).
+     - Identifies duplicate rows and candidate primary keys.
+     - Generates per-column distributions, inferred roles, and non-null samples.
+  4. **Dataset Readiness UI Component (`src/dtp/dashboard/style.py` & `dashboard/app.py`)**:
+     - `render_dataset_readiness()`: Renders a compact, dark-mode glassmorphic readiness card showing status (`Ready for Analysis`), active table identifier, quality score badge, records, columns, measures, and dimensions count.
+     - Includes a collapsible detail drawer (`Inspect Discovered Schema & Data Quality`) surfacing measure unit tags, dimension tags, temporal grains, candidate keys, and cleaning audit notes.
+     - Zero clutter: collapsible design prevents displacing the question input or pushing content below the fold.
+     - Preserves `AppTest` widget invariance (`asking.metric.values == []` on initial load).
+  5. **Session Persistence**:
+     - Stores `uploaded_warehouse`, `uploaded_ingestion_result`, and `ask_session` in `st.session_state` to ensure the dataset remains immediately available for conversational analytics.
+- **Verification**:
+  - `tests/test_phase2_upload_integration.py`: 6 passed covering real CSV (`ecommerce_orders.csv`), messy Excel (`.xlsx`), sentinel null cleaning, numeric coercion, profiling metrics, and active AI querying.
+  - Dashboard test suite (`test_dashboard_ask.py`, `test_phase1_initial_experience.py`, `test_phase2_upload_integration.py`, `test_dashboard_auth.py`, `test_views.py`): 98 passed, 0 failed.
+  - Full repo test suite: **994 passed**, 0 failed, 0 regressions.
+

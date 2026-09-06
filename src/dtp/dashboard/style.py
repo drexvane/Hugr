@@ -248,6 +248,104 @@ div[data-testid="stMetricValue"] {
     font-weight: 600 !important;
     color: #f8fafc !important;
 }
+
+/* Dataset Readiness Card */
+.hugr-readiness-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem;
+    margin: 1rem 0 1.25rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.hugr-readiness-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hugr-readiness-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #34d399;
+}
+
+.hugr-quality-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.hugr-readiness-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+    .hugr-readiness-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.hugr-readiness-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.hugr-stat-num {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.hugr-stat-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.hugr-tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.4rem 0;
+}
+
+.hugr-tag {
+    font-size: 0.78rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    background: rgba(30, 41, 59, 0.7);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hugr-tag-measure {
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #c7d2fe;
+}
+
+.hugr-tag-dim {
+    border-color: rgba(6, 182, 212, 0.3);
+    color: #a5f3fc;
+}
 </style>
 """
 
@@ -381,3 +479,95 @@ def get_starter_prompts(wh: Any) -> list[str]:
 
     from dtp.agent.session import EXAMPLES
     return EXAMPLES[:4]
+
+
+def render_dataset_readiness(result: Any) -> None:
+    """Render a compact, elegant dataset readiness card communicating readiness without clutter."""
+    profile = getattr(result, "profile", None)
+    schema = getattr(result, "schema", None)
+    cleaning = getattr(result, "cleaning", None)
+
+    if profile is None or schema is None:
+        return
+
+    n_rows = profile.n_rows
+    n_cols = profile.n_cols
+    quality = profile.quality_score
+    n_measures = len(schema.measure_columns)
+    n_dims = len(schema.dimension_columns)
+    table_name = profile.table_name
+
+    st.markdown(
+        f"""
+        <div class="hugr-readiness-card">
+            <div class="hugr-readiness-header">
+                <div class="hugr-readiness-status">
+                    <span class="hugr-status-dot"></span>
+                    <span>Ready for Analysis — Table: <code>{table_name}</code></span>
+                </div>
+                <div class="hugr-quality-badge">{quality}% Quality Score</div>
+            </div>
+            <div class="hugr-readiness-grid">
+                <div class="hugr-readiness-stat">
+                    <span class="hugr-stat-num">{n_rows:,}</span>
+                    <span class="hugr-stat-label">Records</span>
+                </div>
+                <div class="hugr-readiness-stat">
+                    <span class="hugr-stat-num">{n_cols}</span>
+                    <span class="hugr-stat-label">Columns</span>
+                </div>
+                <div class="hugr-readiness-stat">
+                    <span class="hugr-stat-num">{n_measures}</span>
+                    <span class="hugr-stat-label">Measures</span>
+                </div>
+                <div class="hugr-readiness-stat">
+                    <span class="hugr-stat-num">{n_dims}</span>
+                    <span class="hugr-stat-label">Dimensions</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("Inspect Discovered Schema & Data Quality", expanded=False):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Discovered Measures**")
+            if schema.measure_columns:
+                tags = " ".join([f'<span class="hugr-tag hugr-tag-measure">{col} ({unit})</span>' for col, unit in schema.measure_columns.items()])
+                st.markdown(f'<div class="hugr-tag-container">{tags}</div>', unsafe_allow_html=True)
+            else:
+                st.caption("No numeric measures detected.")
+
+            if schema.time_columns:
+                st.markdown("**Temporal Grains**")
+                time_tags = " ".join([f'<span class="hugr-tag">{col}</span>' for col in schema.time_columns])
+                st.markdown(f'<div class="hugr-tag-container">{time_tags}</div>', unsafe_allow_html=True)
+
+        with c2:
+            st.markdown("**Discovered Dimensions**")
+            if schema.dimension_columns:
+                tags = " ".join([f'<span class="hugr-tag hugr-tag-dim">{col}</span>' for col in schema.dimension_columns[:15]])
+                st.markdown(f'<div class="hugr-tag-container">{tags}</div>', unsafe_allow_html=True)
+            else:
+                st.caption("No categorical dimensions detected.")
+
+            if profile.candidate_keys:
+                st.markdown("**Candidate Keys**")
+                key_tags = " ".join([f'<span class="hugr-tag">{k}</span>' for k in profile.candidate_keys])
+                st.markdown(f'<div class="hugr-tag-container">{key_tags}</div>', unsafe_allow_html=True)
+
+        if cleaning:
+            notes = []
+            if cleaning.sentinel_nulls_replaced > 0:
+                notes.append(f"Cleaned {cleaning.sentinel_nulls_replaced} sentinel null cells")
+            if cleaning.whitespace_cells_trimmed > 0:
+                notes.append(f"Trimmed whitespace in {cleaning.whitespace_cells_trimmed} text cells")
+            if cleaning.duplicate_rows > 0:
+                notes.append(f"Flagged {cleaning.duplicate_rows} duplicate rows")
+            if cleaning.numeric_coercions:
+                notes.extend(list(cleaning.numeric_coercions.values()))
+            if notes:
+                st.caption("Cleaning applied: " + " · ".join(notes))
+

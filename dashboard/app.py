@@ -41,6 +41,7 @@ from dtp import warehouse                                     # noqa: E402
 from dtp.dashboard import auth                                # noqa: E402
 from dtp.dashboard import views as V                          # noqa: E402
 from dtp.dashboard import style                               # noqa: E402
+from dtp import ingest                                        # noqa: E402
 
 st.set_page_config(page_title="Hugr — AI Data Analyst", page_icon="\u2726",
                    layout="wide")
@@ -296,35 +297,31 @@ def _ask_screen(wh, version_id: str) -> None:
         file_id = f"{uploaded_file.name}_{uploaded_file.size}"
         if st.session_state.get("current_uploaded_file_id") != file_id:
             try:
-                import re
-                import pandas as pd
-                if uploaded_file.name.endswith((".xlsx", ".xls")):
-                    df = pd.read_excel(uploaded_file)
-                else:
-                    df = pd.read_csv(uploaded_file)
-
-                clean_name = Path(uploaded_file.name).stem.lower()
-                clean_name = re.sub(r"[^a-z0-9_]+", "_", clean_name).strip("_") or "dataset"
-
-                new_wh = warehouse.Warehouse.from_df(df, name=clean_name)
-                st.session_state["uploaded_warehouse"] = new_wh
+                res = ingest.ingest_tabular(uploaded_file, uploaded_file.name)
+                st.session_state["uploaded_warehouse"] = res.warehouse
+                st.session_state["uploaded_ingestion_result"] = res
                 st.session_state["uploaded_file_name"] = uploaded_file.name
-                st.session_state["uploaded_rows"] = len(df)
-                st.session_state["uploaded_cols"] = len(df.columns)
+                st.session_state["uploaded_rows"] = res.profile.n_rows
+                st.session_state["uploaded_cols"] = res.profile.n_cols
                 st.session_state["current_uploaded_file_id"] = file_id
                 from dtp.agent import Session
-                st.session_state["ask_session"] = Session(new_wh, _model(), new_wh.version_id)
+                st.session_state["ask_session"] = Session(res.warehouse, _model(), res.warehouse.version_id)
                 st.rerun()
             except Exception as exc:
                 st.error(f"Error ingesting {uploaded_file.name}: {exc}")
     elif "uploaded_warehouse" in st.session_state and uploaded_file is None:
         del st.session_state["uploaded_warehouse"]
+        st.session_state.pop("uploaded_ingestion_result", None)
         st.session_state.pop("uploaded_file_name", None)
         st.session_state.pop("uploaded_rows", None)
         st.session_state.pop("uploaded_cols", None)
         st.session_state.pop("current_uploaded_file_id", None)
         st.session_state.pop("ask_session", None)
         st.rerun()
+
+    if "uploaded_ingestion_result" in st.session_state:
+        style.render_dataset_readiness(st.session_state["uploaded_ingestion_result"])
+
 
     starter_prompts = style.get_starter_prompts(wh)
     placeholder_text = starter_prompts[0] if starter_prompts else "revenue and margin by category"

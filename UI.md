@@ -64,7 +64,39 @@
 
 ---
 
-## 3. Subsequent Phases (Roadmap Reference)
-- **Phase 2 — Conversational Analytics & Exploration**: Interactive chart tooltips, follow-up query suggestions, multi-turn dialogue memory.
-- **Phase 3 — Deep Drilldowns & Anomaly Detection**: Automated outliers, segment comparisons, and automated narrative insights.
-- **Phase 4 — Export, Sharing & Multi-Dataset Synthesis**: Cross-dataset joins, PDF/HTML insight reports, and collaborative workspaces.
+## 3. Phase 2 — Upload Integration (Active Scope)
+
+### 3.1 Tabular Ingestion Lifecycle
+- **Pipeline Order**: `Upload → Ingestion → Cleaning → Profiling → Schema Discovery → Catalog → DuckDB`.
+- **Format Support**: Delimited text (`.csv`, `.tsv`, `.txt`, `.psv`) and Excel workbooks (`.xlsx`, `.xls`).
+- **Real User Files Only**: Strictly 0 synthetic/fake numbers.
+- **Engine**: Ingestion via `src/dtp/ingest.py`, registering sanitized tables into DuckDB memory sessions with typed `Catalog`.
+
+### 3.2 Data Cleaning Engine
+- Strips cell whitespace on all string values.
+- Replaces sentinel null forms (`"", "-", "--", "n/a", "na", "nan", "null", "none", "?", "#n/a"`) with `np.nan`.
+- Coerces formatted numeric text (currency `$`, `€`, `£`, percent `%`, and comma numbers `1,234.50`) into floats.
+- Sanitizes and deduplicates column headers.
+
+### 3.3 Data Profiling & Quality Communication
+- Profiles total rows, columns, cells, missing cell percentage, and overall `quality_score`.
+- Identifies duplicate rows and candidate primary keys.
+- Surfaces dataset readiness via a compact glassmorphic card:
+  - Header: Status (`Ready for Analysis`), Table identifier, and Quality Score badge.
+  - Metrics Grid: Records, Columns, Discovered Measures, Discovered Dimensions.
+  - Collapsible Drawer: Discovered Measures with unit badges, Dimensions, Temporal Grains, Candidate Keys, and Cleaning Audit Notes.
+- Communicates dataset readiness without UI clutter or pushing input controls below the fold.
+
+---
+
+## 4. Phase 3 — Conversational Analytics & Exploration
+- Interactive chart tooltips, follow-up query suggestions, multi-turn dialogue memory.
+- Dynamic KPI metric summary cards derived from query execution.
+- Granular breakdown views with adaptive chart types (bar, line, scatter).
+
+---
+
+## 5. Subsequent Phases (Roadmap Reference)
+- **Phase 4 — Deep Drilldowns & Anomaly Detection**: Automated outliers, segment comparisons, and automated narrative insights.
+- **Phase 5 — Export, Sharing & Multi-Dataset Synthesis**: Cross-dataset joins, PDF/HTML insight reports, and collaborative workspaces.
+
