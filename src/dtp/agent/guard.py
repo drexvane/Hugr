@@ -121,11 +121,13 @@ def refuse(code: str, detail: str = "",
 SCOPE_PATTERNS: tuple[tuple[str, str], ...] = (
     ("personal_data", r"customer'?s? (name|names|email|address|street|password)"),
     ("personal_data", r"\b(first|last|full) names?\b"),
+    ("personal_data", r"\b(name|names|email|emails|phone|address)\s+of\b"),
     ("personal_data", r"\bwhich customers?\b|\btop \d+ customers?\b"),
+    ("personal_data", r"\bwho (are|is|was|were)\b.*?\b(customers?|users?|clients?|patients?|students?|employees?|people|persons?)\b"),
     ("personal_data", r"\bwho (are|is) (our|the) (top|best|biggest|largest)"),
     # `ips?` on its own, because "which IP hit us most" is the question this row
     # exists for and it says neither "address" nor "client". `\b` keeps "zip" out.
-    ("personal_data", r"\b(ips?|ip address|client ip|email address|password)\b"),
+    ("personal_data", r"\b(ips?|ip address|client ip|emails?|email address|password)\b"),
     ("forecast", r"\b(forecast|predict|prediction|projected|extrapolat)"),
     ("forecast", r"\bnext (month|quarter|year|week)\b"),
     ("causal", r"\bwhy\b|\broot cause\b|\bwhat caused\b|\bwhat drove\b"),
@@ -136,11 +138,11 @@ SCOPE_PATTERNS: tuple[tuple[str, str], ...] = (
     # thin-group control, and a false positive costs an answerable question.
     ("write", r"\b(delete|remove|drop|truncate|wipe|purge)\s+"
               r"(?:(?:the|all|these|those|every|any)\s+)?(?:\w+\s+){0,2}"
-              r"(rows?|tables?|records?|orders?|snapshots?|data)\b"),
-    ("write", r"\b(update|modify|overwrite|insert into|set)\s+"
+              r"(rows?|tables?|records?|orders?|snapshots?|data|accounts?)\b"),
+    ("write", r"\b(update|modify|overwrite|insert into|set|increase|decrease|raise)\s+"
               r"(?:(?:the|all|these|those|our|my)\s+)?(?:\w+\s+){0,2}"
               r"(targets?|budgets?|status|prices?|values?|rows?|records?|orders?|"
-              r"tables?|columns?|order_items|data)\b"),
+              r"tables?|columns?|order_items|data|balance|balances|accounts?|salary|salaries)\b"),
     ("raw_sql", r"\bselect\b.{0,80}\bfrom\b|\bgroup by\b|\bsql\b"),
 )
 

@@ -334,15 +334,17 @@ class Filters:
         sql: list[str] = []
         params: dict[str, Any] = {}
         if self.date_from or self.date_to:
-            date_col = self.date_col or (catalog.primary_date_col if catalog else "order_date") or "order_date"
-            date_expr = f'"{date_col}"' if not date_col.startswith('"') and not date_col.isalnum() else date_col
-            if self.date_from:
-                sql.append(f"{date_expr} >= $date_from::TIMESTAMP")
-                params["date_from"] = self.date_from
-            if self.date_to:
-                # Inclusive of the whole final day: the column carries a time.
-                sql.append(f"{date_expr} < ($date_to::TIMESTAMP + INTERVAL 1 DAY)")
-                params["date_to"] = self.date_to
+            primary_col = catalog.primary_date_col if catalog else "order_date"
+            date_col = self.date_col or primary_col
+            if date_col:
+                date_expr = f'"{date_col}"' if not date_col.startswith('"') and not date_col.isalnum() else date_col
+                if self.date_from:
+                    sql.append(f"{date_expr} >= $date_from::TIMESTAMP")
+                    params["date_from"] = self.date_from
+                if self.date_to:
+                    # Inclusive of the whole final day: the column carries a time.
+                    sql.append(f"{date_expr} < ($date_to::TIMESTAMP + INTERVAL 1 DAY)")
+                    params["date_to"] = self.date_to
         for i, (key, values) in enumerate(sorted(self.where.items())):
             if not values:
                 continue
@@ -620,8 +622,8 @@ def fmt_dim(key: str, value: Any) -> str:
     return str(value)
 
 
-def fmt_metric(key: str, value: Any, compact: bool = False) -> str:
-    return fmt(value, metric(key).unit, compact=compact)
+def fmt_metric(key: str, value: Any, compact: bool = False, catalog: Catalog | None = None) -> str:
+    return fmt(value, metric(key, catalog).unit, compact=compact)
 
 
 def fmt_delta(value: Any, unit: str = COUNT, compact: bool = False) -> str:

@@ -138,21 +138,26 @@ class Plan:
         which metric, which grouping and which window produced the number, which is
         the only way a wrong reading of a question is noticed.
         """
+        cat = M.get_active_catalog()
+        active_metrics = cat.metrics if cat else M.METRICS
+        active_dims = cat.dimensions if cat else M.DIMENSIONS
+
         if self.kind == "funnel":
             return ("views against orders by "
-                    + M.dimension(self.funnel_by).label.lower()
+                    + M.dimension(self.funnel_by, cat).label.lower()
                     + ", over the access log's own window")
-        names = [M.metric(k).label for k in self.metrics] or ["lines"]
+        default_label = "records" if cat and cat.name != "order_items" else "lines"
+        names = [M.metric(k, cat).label for k in self.metrics] or [default_label]
         text = _and(names)
-        dims = [M.dimension(k).label.lower() for k in self.dims()]
+        dims = [M.dimension(k, cat).label.lower() for k in self.dims()]
         if dims:
             text += " by " + _and(dims)
-        where = self.filters().describe()
+        where = self.filters().describe(cat)
         if where != "no filters":
             text += " (" + where + ")"
         if self.order_by:
             column = self.order_by.lstrip("-")
-            label = (M.METRICS[column].label if column in M.METRICS
+            label = (active_metrics[column].label if column in active_metrics
                      else column.replace("_", " "))
             text += ", " + ("highest" if self.order_by.startswith("-")
                             else "lowest") + " " + label.lower() + " first"
@@ -322,14 +327,19 @@ def _get_active_dimensions(wh: Warehouse | None = None) -> dict[str, Any]:
 
 def _get_active_time_grains(wh: Warehouse | None = None) -> tuple[str, ...]:
     cat = getattr(wh, "catalog", None) or M.get_active_catalog()
-    if cat and "time" in cat.drill_paths:
-        return cat.drill_paths["time"]
+    if cat:
+        return tuple(cat.drill_paths.get("time", ()))
     return TIME_GRAINS
 
 
 def _check_metrics(plan: Plan, notes: list[str], wh: Warehouse | None = None) -> None:
     active_metrics = _get_active_metrics(wh)
-    keys = list(dict.fromkeys(plan.metrics))          # order-preserving dedupe
+    lookup: dict[str, str] = {k.lower(): k for k in active_metrics}
+    lookup.update({getattr(m, "label", str(m)).lower(): k for k, m in active_metrics.items()})
+    lookup.update({k.replace("_", " ").lower(): k for k in active_metrics})
+
+    raw_keys = [lookup.get(str(k).strip().lower(), k) for k in plan.metrics]
+    keys = list(dict.fromkeys(raw_keys))          # order-preserving dedupe
     for key in keys:
         if key not in active_metrics:
             near = _near(key, list(active_metrics))
@@ -400,11 +410,25 @@ def _validate_funnel(plan: Plan, notes: list[str]) -> Plan:
 def _check_dims(plan: Plan, notes: list[str], wh: Warehouse | None = None) -> None:
     active_dims = _get_active_dimensions(wh)
     time_grains = _get_active_time_grains(wh)
-    if plan.grain is not None and plan.grain not in time_grains:
-        raise refuse("unknown_dimension",
-                     repr(plan.grain) + " is not a time grain.", time_grains)
+
+    dim_lookup: dict[str, str] = {k.lower(): k for k in active_dims}
+    dim_lookup.update({getattr(d, "label", str(d)).lower(): k for k, d in active_dims.items()})
+    dim_lookup.update({k.replace("_", " ").lower(): k for k in active_dims})
+
+    if plan.grain is not None:
+        if not time_grains:
+            notes.append("this dataset has no date column, so time grain was dropped")
+            plan.grain = None
+        else:
+            grain_canon = dim_lookup.get(str(plan.grain).strip().lower(), plan.grain)
+            if grain_canon in time_grains:
+                plan.grain = grain_canon
+            else:
+                raise refuse("unknown_dimension",
+                             repr(plan.grain) + " is not a time grain.", time_grains)
     keys: list[str] = []
-    for key in dict.fromkeys(plan.by):
+    for raw in dict.fromkeys(plan.by):
+        key = dim_lookup.get(str(raw).strip().lower(), raw)
         if key not in active_dims:
             near = _near(key, list(active_dims))
             raise refuse(
@@ -445,6 +469,15 @@ def _check_dates(plan: Plan, notes: list[str],
         notes.append("the two dates were the wrong way round and were swapped")
     plan.date_from = None if lo_asked is None else lo_asked.strftime("%Y-%m-%d")
     plan.date_to = None if hi_asked is None else hi_asked.strftime("%Y-%m-%d")
+
+    cat = getattr(wh, "catalog", None) if wh else M.get_active_catalog()
+    if cat and not cat.primary_date_col:
+        if lo_asked is not None or hi_asked is not None:
+            notes.append("this dataset has no date column, so date filters do not apply")
+        plan.date_from = None
+        plan.date_to = None
+        return
+
     if wh is None or (lo_asked is None and hi_asked is None):
         return
 
@@ -523,7 +556,8 @@ def _canonical(wh: Warehouse, key: str, values: list[str]) -> list[str]:
     difference between an answer and a confident summary of an empty frame - which
     is the failure this refusal exists to prevent, not a convenience.
     """
-    known = M.dimension_values(wh, key, limit=_VALUE_SCAN)
+    cat = getattr(wh, "catalog", None) or M.get_active_catalog()
+    known = M.dimension_values(wh, key, limit=_VALUE_SCAN, catalog=cat)
     lookup = {str(v).casefold(): str(v) for v in known}
     out: list[str] = []
     for value in values:
@@ -532,7 +566,7 @@ def _canonical(wh: Warehouse, key: str, values: list[str]) -> list[str]:
             near = _near(str(value), list(lookup))
             raise refuse(
                 "unknown_value",
-                repr(value) + " is not a value of " + M.dimension(key).label
+                repr(value) + " is not a value of " + M.dimension(key, cat).label
                 + " in this snapshot.",
                 tuple(lookup[n] for n in near) or (_listing(known, limit=6),))
         out.append(match)
@@ -584,6 +618,7 @@ def execute(wh: Warehouse, plan: Plan) -> pd.DataFrame:
     and explained in terms of the thing that caused it - including the ungrouped
     case, where SQL hands back one row of nulls rather than no rows at all.
     """
+    cat = getattr(wh, "catalog", None) or M.get_active_catalog()
     if plan.kind == "funnel":
         frame = M.funnel(wh, by=plan.funnel_by,
                          limit=plan.limit or MAX_LIMIT)
@@ -595,11 +630,11 @@ def execute(wh: Warehouse, plan: Plan) -> pd.DataFrame:
     elif plan.grain and not plan.by and not plan.order_by and not plan.limit \
             and not plan.min_lines:
         frame = M.timeseries(wh, plan.metrics, grain=plan.grain,
-                             filters=plan.filters())
+                             filters=plan.filters(), catalog=cat)
     else:
         frame = M.aggregate(wh, plan.metrics, by=plan.dims(),
                             filters=plan.filters(), order_by=plan.order_by,
-                            limit=plan.limit, min_lines=plan.min_lines)
+                            limit=plan.limit, min_lines=plan.min_lines, catalog=cat)
     if frame.empty or _matched_nothing(frame):
         raise _empty(plan)
     return frame

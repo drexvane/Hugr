@@ -145,6 +145,8 @@ class Session:
         self.wh = wh
         self.model = model
         self.snapshot = snapshot or wh.version_id
+        if getattr(wh, "catalog", None) is not None:
+            M.set_active_catalog(wh.catalog)
         self.plan: P.Plan | None = None
         self.answer: Answer | None = None
         self.log: list[Answer] = []
@@ -159,12 +161,16 @@ class Session:
         changed = (snapshot or wh.version_id) != self.snapshot
         self.wh = wh
         self.snapshot = snapshot or wh.version_id
+        if getattr(wh, "catalog", None) is not None:
+            M.set_active_catalog(wh.catalog)
         if changed:
             self.reset()
 
     # --------------------------------------------------------------- the loop --
     def ask(self, question: str) -> Answer:
         """Answer one question, or explain why this platform will not."""
+        if getattr(self.wh, "catalog", None) is not None:
+            M.set_active_catalog(self.wh.catalog)
         question = (question or "").strip()
         if not question:
             return self._refuse(question, Refusal(
@@ -187,9 +193,10 @@ class Session:
     # ------------------------------------------------------------ step 2 and 3 --
     def _resolve(self, question: str) -> P.Plan:
         """The plan call, then the validator. Nothing has run against data yet."""
+        cat = getattr(self.wh, "catalog", None) or M.get_active_catalog()
         reply = self.model.respond(
             T.system_prompt(self.wh, current=self.plan), question,
-            tools=[T.tool_schema()], max_tokens=PLAN_TOKENS)
+            tools=[T.tool_schema(cat)], max_tokens=PLAN_TOKENS)
         if reply.tool_call is None:
             raise _declined(reply.text)
         if reply.tool_call.name != T.TOOL_NAME:
@@ -206,11 +213,9 @@ class Session:
         # not part of a plan, so `payload` and the plan's fields agree here.
         changes: dict[str, Any] = {name: getattr(fresh, name) for name in payload}
         if "metrics" in payload and "kind" not in payload:
-            # `kind` is derived from the metrics, never remembered. A follow-up
-            # asking for revenue by market after a funnel question is an aggregate
-            # question; a remembered `kind="funnel"` would answer it by product and
-            # silently drop the grouping it asked for.
             changes["kind"] = "aggregate"
+        if "metrics" in payload and "order_by" not in payload:
+            changes["order_by"] = None
         return P.validate(self.plan.patch(changes), self.wh)
 
     # ----------------------------------------------------------- step 4 and 5 --
@@ -223,7 +228,8 @@ class Session:
         summary, verified, withheld = self._summarise(plan, frame, computed)
         answer = Answer(
             question=question, plan=plan, frame=frame, figure=figure, chart=chart,
-            tiles=_tiles(plan, totals), summary=summary, computed=computed,
+            tiles=_tiles(plan, totals, getattr(self.wh, "catalog", None)),
+            summary=summary, computed=computed,
             verified=verified, withheld=withheld, model=self.model.name,
             notes=tuple(plan.notes) + _tile_note(plan, frame))
         self.plan = plan
@@ -281,17 +287,23 @@ class Session:
         (`2018-01-01 00:00:00` against `Jan 2018`) that matching them here would
         flag true sentences.
         """
+        cat = getattr(self.wh, "catalog", None) or M.get_active_catalog()
+        drill_paths = cat.drill_paths if cat else M.DRILL_PATHS
+        drill_siblings = {key: path for path in drill_paths.values() for key in path}
+        time_grains = tuple(cat.drill_paths.get("time", P.TIME_GRAINS)) if cat else P.TIME_GRAINS
+
         wanted = ([plan.funnel_by] if plan.kind == "funnel"
-                  else [d for d in plan.dims() if d not in P.TIME_GRAINS])
+                  else [d for d in plan.dims() if d not in time_grains])
         keys: list[str] = []
         for key in wanted:
-            for sibling in DRILL_SIBLINGS.get(key, (key,)):
-                if sibling not in keys and sibling not in P.TIME_GRAINS:
+            for sibling in drill_siblings.get(key, (key,)):
+                if sibling not in keys and sibling not in time_grains:
                     keys.append(sibling)
         out: list[str] = []
         for key in keys:
             out += [str(v) for v in M.dimension_values(self.wh, key,
-                                                       limit=LABEL_SCAN)]
+                                                       limit=LABEL_SCAN,
+                                                       catalog=cat)]
         return tuple(out)
 
     def _refuse(self, question: str, refusal: Refusal,
@@ -361,12 +373,13 @@ def _draw(plan: P.Plan, frame: pd.DataFrame, dims: list[str],
                                 **extra)
 
 
-def _tiles(plan: P.Plan, totals: dict[str, Any]) -> tuple[Tile, ...]:
+def _tiles(plan: P.Plan, totals: dict[str, Any], catalog: M.Catalog | None = None) -> tuple[Tile, ...]:
+    cat = catalog or M.get_active_catalog()
     keys = (FUNNEL_TILES if plan.kind == "funnel"
             else tuple(plan.metrics[:MAX_TILES]))
-    return tuple(Tile(label=M.metric(k).label,
-                      value=M.fmt_metric(k, totals.get(k), compact=True),
-                      about=M.metric(k).about or "")
+    return tuple(Tile(label=M.metric(k, cat).label,
+                      value=M.fmt_metric(k, totals.get(k), compact=True, catalog=cat),
+                      about=M.metric(k, cat).about or "")
                  for k in keys)
 
 
@@ -397,15 +410,17 @@ def _computed(plan: P.Plan, frame: pd.DataFrame, chart: str, dims: list[str],
         return I.say_anomalies(I.find_anomalies(frame, keys[0], label_col=dims[0]),
                                keys[0], noun=dims[0])
     if chart == "line_grouped":
-        time_dim = next(d for d in dims if d in C.TIME_DIMS)
-        return I.say_trend(frame, time_dim,
-                           next(d for d in dims if d != time_dim), keys[0])
+        time_dims = C.get_time_dims()
+        time_dim = next((d for d in dims if d in time_dims), dims[0])
+        other_dim = next((d for d in dims if d != time_dim), dims[0])
+        return I.say_trend(frame, time_dim, other_dim, keys[0])
     if chart == "heatmap":
         return I.say_grid(frame, dims[0], dims[1], keys[0])
     if len(dims) == 1 and dims[0] == "delay_days":
         # An ordered dimension is a distribution, not a ranking: which bar is
         # tallest and how much sits at or below zero days late.
-        count = next((k for k in keys if M.metric(k).unit == M.COUNT), keys[0])
+        cat = M.get_active_catalog()
+        count = next((k for k in keys if M.metric(k, cat).unit == M.COUNT), keys[0])
         return I.say_spread(frame, "delay_days", count)
     if len(dims) == 1:
         # The sort direction travels with the frame: a plan may rank a metric against
@@ -432,42 +447,37 @@ def _ascending(plan: P.Plan, metric_key: str) -> bool | None:
 
 
 def _say_totals(frame: pd.DataFrame, keys: list[str]) -> str:
-    """The ungrouped answer: each figure named, and nothing else claimed.
-
-    Read off the frame rather than the tiles' own query, so the sentence beside the
-    chart is derived from the same rows the chart is - which is what makes it
-    unfalsifiable rather than merely checked.
-    """
+    """The ungrouped answer: each figure named, and nothing else claimed."""
+    cat = M.get_active_catalog()
     row = frame.iloc[0]
-    parts = [M.metric(k).label + " " + M.fmt_metric(k, row[k], compact=True)
+    parts = [M.metric(k, cat).label + " " + M.fmt_metric(k, row[k], compact=True, catalog=cat)
              for k in keys if k in frame.columns]
     text = "; ".join(parts) if parts else "no measure in this result"
     lines = row.get("n_lines")
     if lines is not None and not pd.isna(lines):
-        text += ", over " + M.fmt(lines, M.COUNT) + " order lines"
+        noun = "order lines" if cat is None or cat.name == "order_items" else "records"
+        text += f", over {M.fmt(lines, M.COUNT)} {noun}"
     return text + "."
 
 
 def _say_shape(frame: pd.DataFrame, dims: list[str], keys: list[str]) -> str:
-    """The fallback for a shape no chart is honest about: say what the table holds.
-
-    Three groupings, or none and no measure. Naming the columns and the row count is
-    the whole of what can be said without reading values, and a sentence that reads
-    values it has not been asked about is how a summary starts being wrong.
-    """
-    what = "; ".join(M.metric(k).label for k in keys) or "order lines"
-    by = ", ".join(M.dimension(d).label.lower() for d in dims)
+    """The fallback for a shape no chart is honest about: say what the table holds."""
+    cat = M.get_active_catalog()
+    noun = "order lines" if cat is None or cat.name == "order_items" else "records"
+    what = "; ".join(M.metric(k, cat).label for k in keys) or noun
+    by = ", ".join(M.dimension(d, cat).label.lower() for d in dims)
     text = what + (" by " + by if by else "")
     return text + " - " + format(len(frame), ",") + " rows, shown as a table."
 
 
 def ask(question: str, wh: Warehouse, model: Model | None = None) -> Answer:
-    """One question, no memory - what the CLI's single-shot mode calls.
-
-    `model` is injected in tests and defaults to the real client, which is the only
-    line in `agent/` that needs a credential.
-    """
+    """One question, no memory - what the CLI's single-shot mode calls."""
     if model is None:
-        from .client import AnthropicModel
-        model = AnthropicModel()
+        from .client import AnthropicModel, OllamaModel, KeywordModel, api_key, is_ollama_available
+        if api_key():
+            model = AnthropicModel()
+        elif is_ollama_available():
+            model = OllamaModel()
+        else:
+            model = KeywordModel(catalog=getattr(wh, "catalog", None))
     return Session(wh, model).ask(question)

@@ -262,16 +262,20 @@ def frame_digest(frame: pd.DataFrame, plan: P.Plan,
     shape and the extremes, not 200 rows, and because this is the payload that
     leaves the process.
     """
+    cat = M.get_active_catalog()
+    metrics_map = cat.metrics if cat else M.METRICS
+    dims_map = cat.dimensions if cat else M.DIMENSIONS
+
     shown = frame.head(rows)
-    header = [_label(c) for c in frame.columns]
+    header = [_label(c, cat) for c in frame.columns]
     lines = [" | ".join(header)]
     for _, row in shown.iterrows():
         cells = []
         for column in frame.columns:
             value = row[column]
-            if column in M.METRICS:
-                cells.append(M.fmt_metric(column, value))
-            elif column in M.DIMENSIONS:
+            if column in metrics_map:
+                cells.append(M.fmt_metric(column, value, catalog=cat))
+            elif column in dims_map:
                 cells.append(str(M.fmt_dim(column, value))[:MAX_CELL])
             elif column == "n_lines":
                 cells.append(M.fmt(value))
@@ -290,9 +294,13 @@ def frame_digest(frame: pd.DataFrame, plan: P.Plan,
     ])
 
 
-def _label(column: str) -> str:
-    if column in M.METRICS:
-        return M.metric(column).label
-    if column in M.DIMENSIONS:
-        return M.dimension(column).label
-    return "Lines" if column == "n_lines" else column
+def _label(column: str, catalog: M.Catalog | None = None) -> str:
+    cat = catalog or M.get_active_catalog()
+    metrics_map = cat.metrics if cat else M.METRICS
+    dims_map = cat.dimensions if cat else M.DIMENSIONS
+    if column in metrics_map:
+        return metrics_map[column].label
+    if column in dims_map:
+        return dims_map[column].label
+    noun = "Lines" if cat is None or cat.name == "order_items" else "Records"
+    return noun if column == "n_lines" else column

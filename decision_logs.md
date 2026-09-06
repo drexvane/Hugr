@@ -40,3 +40,29 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - `tests/test_universal_backend.py`: All 14 dynamic schema discovery, DuckDB aggregation, chart selection, and agent execution tests passed.
   - Full test suite: **939 passed**, 0 failed.
 
+---
+
+## Log Entry 003: Full Universal Backend E2E Validation Across 6 Datasets & Local Ollama Support
+- **Date**: 2026-09-06
+- **Context**: Before any UI work, validate the complete backend flow end-to-end on all 6 sample datasets (`LLM → structured Plan → dynamic Catalog validation → DuckDB execution → chart selection → hallucination guard → final answer`) with 8-10 meaningful questions per domain (aggregation, filtering, grouping, time-based, invalid/refusal, multi-turn). Support local Ollama (`gemma3:4b`) as fallback when no Anthropic API key is provided.
+- **Decisions**:
+  1. **Local Ollama Model Integration (`client.py`)**:
+     - Introduced `OllamaModel` targeting `http://localhost:11434` (with model default `gemma3:4b`).
+     - Uses JSON mode formatting with markdown fence cleanup and JSON parsing fallback.
+     - Added `is_ollama_available()` check and automated provider cascading: Anthropic Key -> Local Ollama -> Keyless Keyword Stub.
+  2. **Dynamic Metric & Dimension Resolution**:
+     - `plan.py`: `_get_active_time_grains()` queries catalog-specific time grains, preventing fallback to retail `order_date`.
+     - Gracefully drops date filters and time grains with explicit diagnostic notes when datasets lack temporal columns.
+     - `session.py`: Dynamically derives KPI tiles, captions, summaries, and fallback shapes from active catalog rather than retail defaults (`"records"` instead of `"order lines"`).
+     - Resets sorting when follow-up queries explicitly select a new metric.
+  3. **Universal Keyword Parsing & Multi-Word Filter Support**:
+     - Updated `where` clause extraction to capture multi-word and quoted values (`where item_name is Chicken Bowl`).
+     - Added metric prefix aliases (`sum`, `avg`, `min`, `max`) with spaces and underscores, plus English plural matching (`-s`, `-es`), while preserving strict word boundaries to avoid false substring matches (`"average"` matching `"age"`).
+     - Restrained multi-turn patching to genuine follow-up phrasing (`"by ..."`, `"where ..."`, `"top ..."`) to prevent unknown metrics from silently adopting previous turn metrics.
+  4. **Generalized Scope Guard (`guard.py`)**:
+     - Expanded `personal_data` patterns to protect employee, student, patient, customer, and user names and emails across domains.
+     - Expanded `write` patterns to catch mutation verbs (`increase`, `decrease`, `raise`) and nouns (`balance`, `accounts`, `salary`).
+- **Test Suite Verification**:
+  - `tests/test_universal_agent_e2e.py`: 56+ natural language questions tested across all 6 domains and live Ollama LLM execution; all 7 test suites passed (100%).
+  - Full repo test suite: **983 passed**, 0 failed, 0 regressions.
+
