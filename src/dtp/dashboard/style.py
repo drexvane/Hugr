@@ -419,6 +419,89 @@ div[data-testid="stMetricValue"] {
     margin: 0.8rem 0;
     color: #f1f5f9;
 }
+
+/* Phase 4: Drilldowns & Anomaly Detection */
+.hugr-anomaly-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    margin: 0.8rem 0;
+    color: #fef3c7;
+    font-size: 0.88rem;
+}
+
+.hugr-anomaly-icon {
+    font-size: 1.25rem;
+    color: #f59e0b;
+}
+
+.hugr-narrative-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.hugr-narrative-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a5b4fc;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hugr-narrative-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    margin: 0.4rem 0;
+    line-height: 1.45;
+}
+
+.hugr-drilldown-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.6rem 0 1rem 0;
+}
+
+.hugr-drilldown-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #67e8f9;
+    margin-right: 0.25rem;
+}
+
+.hugr-drilldown-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 9999px;
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    color: #a5f3fc;
+    transition: all 0.2s ease;
+}
 </style>
 """
 
@@ -745,5 +828,64 @@ def render_verification_badge(model_name: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_anomaly_alert(anomalies: list[Any]) -> None:
+    """Render high-priority anomaly / outlier alert banner."""
+    if not anomalies:
+        return
+    for a in anomalies:
+        label = getattr(a, "label", "Outlier")
+        fmt_val = getattr(a, "formatted_value", str(getattr(a, "value", "")))
+        z = getattr(a, "z_score", 0.0)
+        direction = getattr(a, "direction", "above")
+        pct = abs(getattr(a, "pct_from_median", 0.0))
+        st.markdown(
+            f"""
+            <div class="hugr-anomaly-alert">
+                <span class="hugr-anomaly-icon">⚠️</span>
+                <div>
+                    <strong>Statistical Outlier Detected:</strong> <code>{label}</code> with <strong>{fmt_val}</strong>
+                    is <strong>{pct}% {direction}</strong> the median ({z:+.1f}σ robust z-score).
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_narrative_insights(insights: list[str]) -> None:
+    """Render automated, data-grounded narrative insight bullets."""
+    if not insights:
+        return
+    items_html = "".join([f'<div class="hugr-narrative-item"><span>✦</span><span>{item}</span></div>' for item in insights])
+    st.markdown(
+        f"""
+        <div class="hugr-narrative-card">
+            <div class="hugr-narrative-header">
+                <span>⚡ Automated Narrative Insights</span>
+            </div>
+            {items_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_drilldown_actions(drilldowns: list[str]) -> None:
+    """Render interactive drilldown action recommendations."""
+    if not drilldowns:
+        return
+    chips_html = "".join([f'<span class="hugr-drilldown-chip">🔍 {d}</span>' for d in drilldowns])
+    st.markdown(
+        f"""
+        <div class="hugr-drilldown-container">
+            <span class="hugr-drilldown-label">Recommended Drilldowns:</span>
+            {chips_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 

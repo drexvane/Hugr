@@ -89,14 +89,46 @@
 
 ---
 
+---
+
 ## 4. Phase 3 — Conversational Analytics & Exploration
-- Interactive chart tooltips, follow-up query suggestions, multi-turn dialogue memory.
-- Dynamic KPI metric summary cards derived from query execution.
-- Granular breakdown views with adaptive chart types (bar, line, scatter).
+- Interactive dark-mode Plotly visualizations with responsive hover tooltips and Outfit/Inter typography.
+- Context-aware dynamic follow-up query suggestions derived from active plan and catalog.
+- Multi-turn dialogue memory with turn tracking and non-destructive plan patching.
+- Zero-hallucination verification badges attributing mathematical operations to DuckDB.
 
 ---
 
-## 5. Subsequent Phases (Roadmap Reference)
-- **Phase 4 — Deep Drilldowns & Anomaly Detection**: Automated outliers, segment comparisons, and automated narrative insights.
+## 5. Phase 4 — Deep Drilldowns & Anomaly Detection (Active Scope)
+
+### 5.1 Automated Outlier & Anomaly Detection
+- Statistical anomaly detection using median / Median Absolute Deviation (MAD) robust z-scores (`robust_z_scores`).
+- Flags significant outliers (`abs(z) >= 2.5`) on any result frame with >= 4 data points.
+- Surfaces an elegant amber alert banner (`.hugr-anomaly-alert`) reporting the outlier's value, percentage deviation from median, and sigma score.
+
+### 5.2 Segment Analysis & Concentration
+- Evaluates top and bottom segment contributions and share of total.
+- Computes Pareto concentration (e.g. share of top 3 segments vs aggregate).
+- Measures spread and disparity ratios (top segment value vs group median).
+
+### 5.3 Automated Narrative Insights
+- Deterministic, data-grounded analytical summaries derived directly from DuckDB execution numbers:
+  - **Leading Segment**: Highlights highest-volume contributor and its exact share percentage.
+  - **Concentration**: Summarizes top-3 concentration whenever it accounts for >= 50% of the total.
+  - **Spread**: Outlines performance ratio of leader vs group median.
+  - **Statistical Outliers**: Direct narrative description of extreme points.
+- Rendered in a polished dark glass card (`.hugr-narrative-card`).
+
+### 5.4 Interactive Drilldown Recommendations
+- Suggests logical next-level drilldown actions:
+  - Filtering into leader and breaking down by secondary dimension (`where <dim> is '<val>' by <sub_dim>`).
+  - Restricting view to top 5 groups.
+  - Generating temporal trend for the leading segment.
+- Rendered as interactive pill chips (`.hugr-drilldown-chip`).
+
+---
+
+## 6. Subsequent Phases (Roadmap Reference)
 - **Phase 5 — Export, Sharing & Multi-Dataset Synthesis**: Cross-dataset joins, PDF/HTML insight reports, and collaborative workspaces.
+
 

@@ -42,6 +42,7 @@ from dtp.dashboard import auth                                # noqa: E402
 from dtp.dashboard import views as V                          # noqa: E402
 from dtp.dashboard import style                               # noqa: E402
 from dtp import ingest                                        # noqa: E402
+from dtp import drilldown                                     # noqa: E402
 
 st.set_page_config(page_title="Hugr — AI Data Analyst", page_icon="\u2726",
                    layout="wide")
@@ -255,6 +256,24 @@ def _render_answer(answer, wh=None) -> None:
         st.caption("\N{WARNING SIGN} " + answer.withheld)
     for note in answer.notes:
         st.caption(note)
+
+    # Phase 4: Automated anomalies, narrative insights & drilldown recommendations
+    if answer.frame is not None and getattr(answer, "plan", None) and wh is not None:
+        metric_col = answer.plan.metrics[0] if answer.plan.metrics else None
+        dim_col = answer.plan.by[0] if answer.plan.by else (answer.plan.grain if getattr(answer.plan, "grain", None) else None)
+        if metric_col and metric_col in answer.frame.columns:
+            anomalies = drilldown.detect_anomalies(answer.frame, metric_col, dim_col)
+            if anomalies:
+                style.render_anomaly_alert(anomalies)
+
+            narratives = drilldown.generate_narrative_insights(answer.frame, answer.plan, wh)
+            if narratives:
+                style.render_narrative_insights(narratives)
+
+            actions = drilldown.get_drilldown_actions(answer.frame, answer.plan, wh)
+            if actions:
+                style.render_drilldown_actions(actions)
+
     with st.expander("The plan that ran"):
         st.json(answer.plan.to_dict())
         st.caption("Filled in by " + answer.model + ", validated against the "
@@ -263,6 +282,7 @@ def _render_answer(answer, wh=None) -> None:
     if wh is not None and getattr(answer, "plan", None):
         follow_ups = style.get_follow_up_suggestions(answer.plan, wh)
         style.render_follow_up_chips(follow_ups)
+
 
 
 

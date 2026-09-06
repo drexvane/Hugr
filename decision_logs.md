@@ -159,4 +159,34 @@ This document tracks all key technical decisions, trade-offs, and changes made d
   - Dashboard test suite: 103 passed, 0 failed.
   - Full repo test suite: **999 passed**, 0 failed, 0 regressions.
 
+---
+
+## Log Entry 007: Phase 4 — Deep Drilldowns & Anomaly Detection
+- **Date**: 2026-09-06
+- **Context**: Implement Phase 4 — Deep Drilldowns & Anomaly Detection per `docs/UI_DESIGN_SPEC.md` and user direction: automated statistical outlier detection, segment concentration comparisons, data-grounded narrative insights, and context-aware interactive drilldown recommendations.
+- **Decisions & Implementation**:
+  1. **Automated Anomaly & Outlier Engine (`src/dtp/drilldown.py`)**:
+     - `detect_anomalies`: Leverages Median Absolute Deviation (MAD) robust z-scores to identify statistical outliers without skewing from extreme values.
+     - Flags points with `abs(z) >= 2.5` on frames with >= 4 points, computing directional shift and percentage delta from median.
+     - `render_anomaly_alert`: Renders an amber alert banner highlighting the outlier, exact metric value, and sigma score.
+  2. **Segment Comparisons & Pareto Concentration (`analyze_segments`)**:
+     - Calculates top vs bottom segment contributions and share of total.
+     - Computes Pareto top-3 share percentage (flags when >= 50%).
+     - Measures performance spread ratio between leading segment and group median.
+  3. **Deterministic Narrative Insights (`generate_narrative_insights` & `render_narrative_insights`)**:
+     - Generates 2-4 bulleted findings directly computed from the DuckDB execution frame (leading contributor, concentration, spread, and outlier notes).
+     - Styled in a dark glassmorphic card (`.hugr-narrative-card`) with glowing gradient border accent.
+     - 100% mathematically grounded with zero hallucination.
+  4. **Interactive Context-Aware Drilldown Recommendations (`get_drilldown_actions` & `render_drilldown_chips`)**:
+     - Suggests actionable next-level queries (e.g. drilling into leading segment by secondary dimension, filtering to top 5, or viewing temporal trends).
+     - Rendered as interactive chips (`.hugr-drilldown-chip`).
+  5. **Harness Stability**:
+     - Preserved all `AppTest` widget and metric contracts.
+     - Added dedicated test suite `tests/test_phase4_drilldowns_and_anomalies.py`.
+- **Verification**:
+  - `tests/test_phase4_drilldowns_and_anomalies.py`: 6 passed.
+  - Dashboard test suite: 109 passed, 0 failed.
+  - Full repo test suite: **1,005 passed**, 0 failed, 0 regressions.
+
+
 
