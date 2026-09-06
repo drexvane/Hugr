@@ -43,6 +43,7 @@ from dtp.dashboard import views as V                          # noqa: E402
 from dtp.dashboard import style                               # noqa: E402
 from dtp import ingest                                        # noqa: E402
 from dtp import drilldown                                     # noqa: E402
+from dtp import export                                        # noqa: E402
 
 st.set_page_config(page_title="Hugr — AI Data Analyst", page_icon="\u2726",
                    layout="wide")
@@ -252,7 +253,7 @@ def _session(wh, version_id: str):
     return session
 
 
-def _render_answer(answer, wh=None) -> None:
+def _render_answer(answer, wh=None, dataset_name: str = "Dataset") -> None:
     if not answer.ok:
         st.warning(answer.refusal.message, icon="\N{NO ENTRY SIGN}")
         return
@@ -300,6 +301,20 @@ def _render_answer(answer, wh=None) -> None:
         follow_ups = style.get_follow_up_suggestions(answer.plan, wh)
         style.render_follow_up_chips(follow_ups)
 
+    # Phase 5: Export & Sharing Report
+    with st.expander("📥 Export & Share Intelligence Report"):
+        c_exp1, c_exp2, c_exp3 = st.columns(3)
+        with c_exp1:
+            md_rep = export.generate_markdown_report(answer, wh, dataset_name)
+            st.download_button("Download Markdown Report", data=md_rep, file_name="hugr_intelligence_report.md", mime="text/markdown", key=f"dl_md_{getattr(answer, 'question', 'q')}")
+        with c_exp2:
+            html_rep = export.generate_html_report(answer, wh, dataset_name)
+            st.download_button("Download Standalone HTML", data=html_rep, file_name="hugr_intelligence_report.html", mime="text/html", key=f"dl_html_{getattr(answer, 'question', 'q')}")
+        with c_exp3:
+            if answer.frame is not None and len(answer.frame) > 0:
+                csv_data = export.export_dataframe_to_csv(answer.frame)
+                st.download_button("Export Table (CSV)", data=csv_data, file_name="hugr_data_table.csv", mime="text/csv", key=f"dl_csv_{getattr(answer, 'question', 'q')}")
+
 
 
 
@@ -332,31 +347,46 @@ def _ask_screen(wh, version_id: str) -> None:
     st.caption("Natural language in, the same charts and the same numbers out. "
                "Every figure is computed here; the model only chooses which.")
 
-    uploaded_file = st.file_uploader(
+    uploaded_files = st.file_uploader(
         "Upload CSV or Excel dataset",
         type=["csv", "xlsx", "xls"],
-        help="Upload any tabular CSV or Excel dataset to explore immediately. Hugr auto-discovers columns, metrics, and dimensions.",
+        accept_multiple_files=True,
+        help="Upload one or multiple tabular CSV or Excel datasets to explore immediately. Hugr auto-discovers columns, metrics, dimensions, and relationships.",
         key="hugr_uploader",
     )
-    if uploaded_file is not None:
-        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-        if st.session_state.get("current_uploaded_file_id") != file_id:
+    if uploaded_files:
+        files_hash = "_".join(f"{f.name}_{f.size}" for f in uploaded_files)
+        if st.session_state.get("current_uploaded_file_id") != files_hash:
             try:
-                res = ingest.ingest_tabular(uploaded_file, uploaded_file.name)
-                st.session_state["uploaded_warehouse"] = res.warehouse
-                st.session_state["uploaded_ingestion_result"] = res
-                st.session_state["uploaded_file_name"] = uploaded_file.name
-                st.session_state["uploaded_rows"] = res.profile.n_rows
-                st.session_state["uploaded_cols"] = res.profile.n_cols
-                st.session_state["current_uploaded_file_id"] = file_id
+                if len(uploaded_files) == 1:
+                    uploaded_file = uploaded_files[0]
+                    res = ingest.ingest_tabular(uploaded_file, uploaded_file.name)
+                    st.session_state["uploaded_warehouse"] = res.warehouse
+                    st.session_state["uploaded_ingestion_result"] = res
+                    st.session_state.pop("uploaded_multi_res", None)
+                    st.session_state["uploaded_file_name"] = uploaded_file.name
+                    st.session_state["uploaded_rows"] = res.profile.n_rows
+                    st.session_state["uploaded_cols"] = res.profile.n_cols
+                else:
+                    multi_res = ingest.ingest_multiple_tabular([(f, f.name) for f in uploaded_files])
+                    st.session_state["uploaded_warehouse"] = multi_res.warehouse
+                    st.session_state["uploaded_multi_res"] = multi_res
+                    st.session_state.pop("uploaded_ingestion_result", None)
+                    st.session_state["uploaded_file_name"] = f"Multi-Dataset ({len(uploaded_files)} tables)"
+                    st.session_state["uploaded_rows"] = sum(r.profile.n_rows for r in multi_res.results.values())
+                    st.session_state["uploaded_cols"] = sum(r.profile.n_cols for r in multi_res.results.values())
+
+                st.session_state["current_uploaded_file_id"] = files_hash
                 from dtp.agent import Session
-                st.session_state["ask_session"] = Session(res.warehouse, _model(), res.warehouse.version_id)
+                wh_target = st.session_state["uploaded_warehouse"]
+                st.session_state["ask_session"] = Session(wh_target, _model(), wh_target.version_id)
                 st.rerun()
             except Exception as exc:
-                st.error(f"Error ingesting {uploaded_file.name}: {exc}")
-    elif "uploaded_warehouse" in st.session_state and uploaded_file is None:
+                st.error(f"Error ingesting datasets: {exc}")
+    elif "uploaded_warehouse" in st.session_state and not uploaded_files:
         del st.session_state["uploaded_warehouse"]
         st.session_state.pop("uploaded_ingestion_result", None)
+        st.session_state.pop("uploaded_multi_res", None)
         st.session_state.pop("uploaded_file_name", None)
         st.session_state.pop("uploaded_rows", None)
         st.session_state.pop("uploaded_cols", None)
@@ -366,6 +396,12 @@ def _ask_screen(wh, version_id: str) -> None:
 
     if "uploaded_ingestion_result" in st.session_state:
         style.render_dataset_readiness(st.session_state["uploaded_ingestion_result"])
+    elif "uploaded_multi_res" in st.session_state:
+        multi_res = st.session_state["uploaded_multi_res"]
+        active_tbl = st.selectbox("Inspect Discovered Table", list(multi_res.results.keys()))
+        style.render_dataset_readiness(multi_res.results[active_tbl])
+        if multi_res.candidate_joins:
+            style.render_candidate_joins(multi_res.candidate_joins)
 
 
     starter_prompts = style.get_starter_prompts(wh)
@@ -392,10 +428,10 @@ def _ask_screen(wh, version_id: str) -> None:
                    "region\" keeps everything else.")
 
     if session.log:
-        _render_answer(session.log[-1], wh=wh)
+        _render_answer(session.log[-1], wh=wh, dataset_name=dataset_display_name)
         for earlier in reversed(session.log[:-1]):
             with st.expander(earlier.question):
-                _render_answer(earlier, wh=wh)
+                _render_answer(earlier, wh=wh, dataset_name=dataset_display_name)
     else:
         style.render_initial_cards()
 

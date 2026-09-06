@@ -72,3 +72,7 @@ reports/risk-summary.json
 # Large dataset files - can be re-downloaded
 dataset/*.csv
 !dataset/.gitkeep
+
+# Media
+*.mp4
+

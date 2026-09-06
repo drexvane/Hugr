@@ -502,6 +502,37 @@ div[data-testid="stMetricValue"] {
     color: #a5f3fc;
     transition: all 0.2s ease;
 }
+
+/* Phase 5: Export, Sharing & Multi-Dataset Synthesis */
+.hugr-export-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin: 0.8rem 0;
+}
+
+.hugr-join-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin: 0.9rem 0;
+}
+
+.hugr-join-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.25rem 0.65rem;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 6px;
+    color: #c7d2fe;
+}
 </style>
 """
 
@@ -886,6 +917,35 @@ def render_drilldown_actions(drilldowns: list[str]) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_candidate_joins(joins: list[Any]) -> None:
+    """Render discovered cross-dataset candidate joins."""
+    if not joins:
+        return
+    items = []
+    for j in joins[:5]:
+        label = getattr(j, "label", f"{j.table_a}.{j.column_a} ↔ {j.table_b}.{j.column_b}")
+        reason = getattr(j, "reason", "")
+        conf = getattr(j, "confidence", 1.0)
+        items.append(
+            f'<div style="margin: 0.45rem 0;">'
+            f'<span class="hugr-join-badge">🔗 {label}</span> '
+            f'<span style="font-size: 0.82rem; color: #94a3b8; margin-left: 0.5rem;">{reason} ({int(conf*100)}% confidence)</span>'
+            f'</div>'
+        )
+    st.markdown(
+        f"""
+        <div class="hugr-join-card">
+            <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase; color: #a5b4fc; margin-bottom: 0.6rem; letter-spacing: 0.04em;">
+                ✦ Discovered Cross-Dataset Relationships
+            </div>
+            {''.join(items)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 
 

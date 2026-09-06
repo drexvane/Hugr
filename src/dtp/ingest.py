@@ -418,3 +418,59 @@ def ingest_tabular(
         cleaning=cleaning,
         warnings=warnings,
     )
+
+
+@dataclass
+class MultiIngestionResult:
+    """Result of ingesting multiple tabular datasets into a unified DuckDB session."""
+    warehouse: warehouse.Warehouse
+    results: dict[str, IngestionResult]
+    candidate_joins: list[Any] = field(default_factory=list)
+    primary_table: str = ""
+
+    @property
+    def tables(self) -> list[str]:
+        return list(self.results.keys())
+
+
+def ingest_multiple_tabular(
+    sources: list[tuple[Any, str]],
+) -> MultiIngestionResult:
+    """Ingest multiple tabular datasets into a unified multi-table DuckDB session."""
+    if not sources:
+        raise ValueError("No data sources provided for multi-table ingestion.")
+
+    results: dict[str, IngestionResult] = {}
+    tables_dict: dict[str, pd.DataFrame] = {}
+
+    for source, filename in sources:
+        res = ingest_tabular(source, filename)
+        # Ensure unique table names
+        base_name = res.table_name
+        tbl_name = base_name
+        idx = 2
+        while tbl_name in results:
+            tbl_name = f"{base_name}_{idx}"
+            idx += 1
+        res.table_name = tbl_name
+        results[tbl_name] = res
+        tables_dict[tbl_name] = res.df
+
+    # Mount unified multi-table DuckDB warehouse
+    multi_wh = warehouse.Warehouse.from_tables(tables_dict)
+
+    # Primary table is the one with the most records
+    primary_table = max(results.keys(), key=lambda k: len(results[k].df))
+    multi_wh.catalog = results[primary_table].warehouse.catalog
+
+    # Discover candidate cross-dataset joins
+    from .export import find_candidate_joins
+    joins = find_candidate_joins(multi_wh)
+
+    return MultiIngestionResult(
+        warehouse=multi_wh,
+        results=results,
+        candidate_joins=joins,
+        primary_table=primary_table,
+    )
+

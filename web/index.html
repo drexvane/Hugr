@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugr — Autonomous AI Data Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-view="initial">
+    <!-- Star Constellation Ambient Canvas -->
+    <canvas id="constellation-canvas" class="constellation-canvas"></canvas>
+
+    <!-- Soft Ethereal Lighting Wash -->
+    <div class="ethereal-ambient-glow"></div>
+
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="brand" id="brand-home" title="Return to Hugr Home">
+                <span class="brand-glyph">✦</span>
+                <span class="brand-name">Hugr</span>
+            </div>
+        </div>
+
+        <!-- Center: Floating Query Pill (Expands to Input on Hover/Click) -->
+        <div class="header-center">
+            <div id="query-pill-container" class="query-pill-container hidden">
+                <div class="query-pill-bubble" id="query-pill-bubble" title="Click to ask a follow-up question">
+                    <span class="pill-sparkle">✦</span>
+                    <span id="active-query-text" class="active-query-text">total quantity by item name</span>
+                    <span class="pill-chevron">∨</span>
+                </div>
+                <form id="header-query-form" class="header-query-form hidden">
+                    <span class="form-sparkle">✦</span>
+                    <input type="text" id="header-query-input" class="header-query-input" placeholder="Ask a follow-up or refine query..." autocomplete="off">
+                    <button type="submit" class="btn-header-submit">Ask ↵</button>
+                    <button type="button" id="btn-close-header-query" class="btn-header-close">✕</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div id="dataset-pill" class="dataset-pill" title="Click to view schema & health">
+                <span class="status-dot"></span>
+                <span id="header-dataset-name">E-commerce_Orders</span>
+                <span id="header-dataset-meta" class="meta-light">1,500 rows • 6 cols</span>
+            </div>
+
+            <div class="export-wrap">
+                <button id="btn-export-trigger" class="btn-icon-nav" title="Export Reports & Data">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
+                <div id="export-dropdown-menu" class="export-dropdown-menu hidden">
+                    <a href="/api/export/markdown" target="_blank" download="hugr_report.md" class="export-menu-link">
+                        <span>📄</span>
+                        <div>
+                            <div class="link-label">Executive Markdown</div>
+                            <div class="link-sub">Full briefing notes</div>
+                        </div>
+                    </a>
+                    <a href="/api/export/html" target="_blank" download="hugr_report.html" class="export-menu-link">
+                        <span>🌐</span>
+                        <div>
+                            <div class="link-label">Standalone HTML</div>
+                            <div class="link-sub">Interactive presentation</div>
+                        </div>
+                    </a>
+                    <a href="/api/export/csv" download="hugr_data.csv" class="export-menu-link">
+                        <span>📊</span>
+                        <div>
+                            <div class="link-label">Clean CSV Table</div>
+                            <div class="link-sub">Processed data rows</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <button id="btn-new-reset" class="btn-icon-nav" title="New Exploration">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Global Progress Glow -->
+    <div id="studio-loader" class="studio-loader hidden">
+        <div class="loader-capsule">
+            <div class="loader-spin-ring"></div>
+            <span>Reasoning across DuckDB tables...</span>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- VIEW 1: SPACIOUS INITIAL CANVAS                                   -->
+    <!-- ================================================================= -->
+    <section id="initial-view" class="initial-view">
+        <div class="hero-center-box">
+            <div class="hero-pill-badge">
+                <span class="sparkle-cyan">✦</span>
+                <span>Autonomous Data Intelligence</span>
+            </div>
+
+            <h1 class="hero-heading">
+                What would you like to <span class="gradient-text">discover?</span>
+            </h1>
+            <p class="hero-caption">
+                Natural-language analytical queries grounded directly in in-memory DuckDB OLAP.
+            </p>
+
+            <!-- Large Centered Question Capsule -->
+            <form id="hero-search-form" class="hero-search-form">
+                <div class="hero-capsule">
+                    <span class="capsule-sparkle">✦</span>
+                    <input type="text" id="hero-search-input" class="hero-search-input" placeholder="Ask anything about your data, e.g. total quantity by item name..." autocomplete="off" spellcheck="false">
+                    <button type="submit" id="btn-hero-analyze" class="btn-hero-analyze">
+                        <span>Analyze</span>
+                        <kbd>↵</kbd>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Integrated File Upload Strip -->
+            <div class="upload-capsule-strip" id="upload-capsule-strip" title="Drop CSV or Excel to analyze">
+                <input type="file" id="hero-file-picker" multiple accept=".csv,.tsv,.xlsx,.xls" hidden>
+                <div class="upload-strip-inner">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Drop a CSV or Excel file to analyze, or <strong class="link-browse">browse</strong></span>
+                    <div class="format-tags">
+                        <span>.CSV</span><span>.XLSX</span><span>MULTI-FILE</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Starter Prompt Suggestions -->
+            <div class="hero-starter-row">
+                <span class="starter-label">Suggestions:</span>
+                <div id="starter-pills-list" class="starter-pills-list"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW 2: SPATIOUS 6-CARD ANALYTICAL STUDIO (MATCHING USER DESIGN)  -->
+    <!-- ================================================================= -->
+    <main id="studio-view" class="studio-view hidden">
+        <div class="studio-grid-container">
+            <!-- --------------------------------------------------------- -->
+            <!-- ROW 1: Bar Chart + KPI Cluster + Donut Chart              -->
+            <!-- --------------------------------------------------------- -->
+            <div class="studio-row studio-row-top">
+                <!-- Card 1: Main Vertical Gradient Bar Chart -->
+                <div class="studio-card card-bar-chart" id="card-bar-chart">
+                    <div class="card-header-clean">
+                        <div class="title-with-icon">
+                            <span class="card-icon-indicator">📊</span>
+                            <h3 id="bar-chart-title" class="card-title-text">Total Quantity by Item Name</h3>
+                        </div>
+                        <div class="card-quick-actions">
+                            <span class="action-glyph" title="Bar Breakdown">∿</span>
+                            <span class="action-glyph" title="Fullscreen">⛶</span>
+                        </div>
+                    </div>
+                    <div class="card-body-chart">
+                        <div id="plot-bar-chart" class="plotly-chart-box"></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Center KPI Cluster -->
+                <div class="studio-kpi-cluster" id="card-kpi-cluster">
+                    <!-- Top Primary Hero KPI Card -->
+                    <div class="kpi-hero-card">
+                        <div class="kpi-header-row">
+                            <span class="kpi-prefix">✦</span>
+                            <span id="kpi-primary-label" class="kpi-label">Total Quantity</span>
+                            <span class="kpi-plus-icon">+</span>
+                        </div>
+                        <div id="kpi-primary-value" class="kpi-huge-value">1,596</div>
+                        <div class="kpi-comparison-row">
+                            <span class="arrow-up">↑</span>
+                            <span id="kpi-comparison-text" class="comparison-text">12.4% vs. previous period</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Sub-KPIs (2 Cards Side-by-Side) -->
+                    <div class="kpi-sub-row">
+                        <div class="kpi-sub-card">
+                            <div class="sub-kpi-label">
+                                <span>✦</span>
+                                <span id="kpi-sub1-label">Unique Items</span>
+                            </div>
+                            <div id="kpi-sub1-value" class="sub-kpi-value">47</div>
+                            <div id="kpi-sub1-note" class="sub-kpi-note">no change</div>
+                        </div>
+                        <div class="kpi-sub-card">
+                            <div class="sub-kpi-label">
+                                <span>✦</span>
+                                <span id="kpi-sub2-label">Avg. Quantity per Item</span>
+                            </div>
+                            <div id="kpi-sub2-value" class="sub-kpi-value">33.95</div>
+                            <div id="kpi-sub2-note" class="sub-kpi-note">across 47 items</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Share of Total Donut Chart -->
+                <div class="studio-card card-donut-chart" id="card-donut-chart">
+                    <div class="card-header-clean">
+                        <div class="title-with-icon">
+                            <h3 id="donut-chart-title" class="card-title-text">Share of Total Quantity</h3>
+                        </div>
+                    </div>
+                    <div class="card-body-chart">
+                        <div id="plot-donut-chart" class="plotly-chart-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- --------------------------------------------------------- -->
+            <!-- ROW 2: Trend Spline + Ranking Table + Key Takeaways        -->
+            <!-- --------------------------------------------------------- -->
+            <div class="studio-row studio-row-bottom">
+                <!-- Card 4: Quantity Trend Spline Chart -->
+                <div class="studio-card card-trend-chart" id="card-trend-chart">
+                    <div class="card-header-clean">
+                        <div class="title-with-icon">
+                            <h3 id="trend-chart-title" class="card-title-text">Quantity Trend (Top 3 Items)</h3>
+                        </div>
+                    </div>
+                    <div class="card-body-chart">
+                        <div id="plot-trend-chart" class="plotly-chart-box"></div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Top 5 Items by Quantity Ranking Table -->
+                <div class="studio-card card-ranking-table" id="card-ranking-table">
+                    <div class="card-header-clean">
+                        <div class="title-with-icon">
+                            <h3 id="ranking-table-title" class="card-title-text">Top 5 Items by Quantity</h3>
+                        </div>
+                        <span class="table-opt-icon">∨</span>
+                    </div>
+                    <div class="ranking-table-wrap">
+                        <table class="ranking-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-name">Item Name</th>
+                                    <th class="col-qty">Quantity</th>
+                                    <th class="col-share">Share</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ranking-table-body">
+                                <!-- Populated dynamically with real DuckDB calculations -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Card 6: Key Takeaways Narrative Card -->
+                <div class="studio-card card-takeaways" id="card-takeaways">
+                    <div class="card-header-clean">
+                        <div class="title-with-icon">
+                            <span class="takeaway-bulb">💡</span>
+                            <h3 class="card-title-text">Key Takeaways</h3>
+                        </div>
+                    </div>
+                    <div class="takeaways-content">
+                        <ul id="takeaways-list" class="takeaways-list">
+                            <!-- Populated dynamically with verified DuckDB narrative -->
+                        </ul>
+                        <button type="button" id="btn-card-followup" class="btn-card-followup">
+                            <span class="plus-sparkle">+</span>
+                            <span>Ask a follow-up question</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Non-Intrusive Drawer Trigger Bar -->
+        <div class="studio-bottom-bar">
+            <button id="btn-open-table-drawer" class="btn-bottom-pill">
+                <span>Inspect Underlying Records & DuckDB Execution Plan</span>
+                <span class="chevron-up">▾</span>
+            </button>
+            <div id="bottom-followup-chips" class="bottom-followup-chips"></div>
+        </div>
+    </main>
+
+    <!-- Slide-Up Drawer Overlay (Raw Table & AST Plan) -->
+    <div id="audit-drawer-overlay" class="audit-drawer-overlay hidden">
+        <div class="audit-sheet">
+            <div class="audit-header">
+                <div class="audit-title-group">
+                    <span class="audit-title">Underlying Tabular Records & Validated Query Plan</span>
+                    <span id="audit-rows-badge" class="audit-badge">47 records</span>
+                </div>
+                <button id="btn-close-audit" class="btn-close-circle">✕</button>
+            </div>
+            <div class="audit-content-split">
+                <div class="audit-table-pane">
+                    <table class="audit-table">
+                        <thead id="audit-table-head"></thead>
+                        <tbody id="audit-table-body"></tbody>
+                    </table>
+                </div>
+                <div class="audit-plan-pane">
+                    <div class="plan-heading">Validated DuckDB Plan (Deterministic AST)</div>
+                    <pre id="audit-plan-json" class="audit-plan-json"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telemetry Drawer -->
+    <div id="telemetry-drawer-overlay" class="audit-drawer-overlay hidden">
+        <div class="audit-sheet telemetry-sheet">
+            <div class="audit-header">
+                <div class="audit-title-group">
+                    <span class="audit-title">Dataset Health & Discovered Schema</span>
+                    <span id="telemetry-score-badge" class="audit-badge badge-green">100% Quality</span>
+                </div>
+                <button id="btn-close-telemetry" class="btn-close-circle">✕</button>
+            </div>
+            <div class="telemetry-flex">
+                <div class="telemetry-pane">
+                    <h4>Discovered Measures (DuckDB Math)</h4>
+                    <div id="telemetry-measures-container" class="telemetry-list"></div>
+                </div>
+                <div class="telemetry-pane">
+                    <h4>Discovered Dimensions</h4>
+                    <div id="telemetry-dimensions-container" class="telemetry-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
