@@ -218,12 +218,27 @@ def from_tool_input(payload: dict[str, Any]) -> Plan:
 
 
 def _as_list(value: Any, name: str) -> list[str]:
-    if value is None:
+    if value is None or value == "":
         return []
     if isinstance(value, str):
         return [value]
     if isinstance(value, (list, tuple)):
-        return [str(v) for v in value]
+        res = []
+        for v in value:
+            if isinstance(v, dict):
+                for k in ("name", "column", "metric", "field", "dim", "dimension"):
+                    if k in v and v[k]:
+                        res.append(str(v[k]))
+                        break
+                else:
+                    res.append(str(v))
+            elif v is not None:
+                res.append(str(v))
+        return res
+    if isinstance(value, dict):
+        for k in ("name", "column", "metric", "field", "items"):
+            if k in value and value[k]:
+                return _as_list(value[k], name)
     raise refuse("unparseable", name + " must be a list of strings.")
 
 
@@ -232,6 +247,12 @@ def _as_str(value: Any, name: str) -> str | None:
         return None
     if isinstance(value, (str, int)):
         return str(value)
+    if isinstance(value, (list, tuple)):
+        return str(value[0]) if value else None
+    if isinstance(value, dict):
+        for k in ("name", "column", "metric", "field", "dim", "dimension"):
+            if k in value and value[k]:
+                return str(value[k])
     raise refuse("unparseable", name + " must be a string.")
 
 

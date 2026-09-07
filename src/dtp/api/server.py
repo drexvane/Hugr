@@ -59,13 +59,19 @@ class ServerState:
 state = ServerState()
 
 
-def _get_model():
+def _get_model(wh: warehouse.Warehouse | None = None):
+    cat = getattr(wh, "catalog", None) if wh else None
     if client.api_key():
         try:
             return client.AnthropicModel()
         except RuntimeError:
             pass
-    return client.KeywordModel()
+    if client.is_ollama_available():
+        try:
+            return client.OllamaModel(catalog=cat)
+        except Exception:
+            pass
+    return client.KeywordModel(catalog=cat)
 
 
 def initialize_default_dataset() -> None:
@@ -90,7 +96,7 @@ def initialize_default_dataset() -> None:
             "dimensions": schema.dimension_columns if schema else [],
             "temporal": schema.time_columns if schema else [],
         }
-        state.session = Session(wh, _get_model(), wh.version_id)
+        state.session = Session(wh, _get_model(wh), wh.version_id)
         state.candidate_joins = []
     else:
         empty_df = pd.DataFrame({"record_id": [1]})
@@ -100,7 +106,7 @@ def initialize_default_dataset() -> None:
         state.active_table_name = "dataset"
         state.row_count = 0
         state.col_count = 0
-        state.session = Session(wh, _get_model(), "empty")
+        state.session = Session(wh, _get_model(wh), "empty")
 
 
 def get_column_summaries(wh: warehouse.Warehouse) -> dict[str, Any]:
@@ -482,7 +488,7 @@ async def upload_files(files: list[UploadFile] = File(...)) -> dict[str, Any]:
                 ),
             }
             state.candidate_joins = []
-            state.session = Session(res.warehouse, _get_model(), res.warehouse.version_id)
+            state.session = Session(res.warehouse, _get_model(res.warehouse), res.warehouse.version_id)
             state.latest_answer = None
 
             return {
@@ -529,7 +535,7 @@ async def upload_files(files: list[UploadFile] = File(...)) -> dict[str, Any]:
                 }
                 for j in multi_res.candidate_joins
             ]
-            state.session = Session(wh, _get_model(), wh.version_id)
+            state.session = Session(wh, _get_model(wh), wh.version_id)
             state.latest_answer = None
 
             return {
@@ -562,10 +568,15 @@ def ask_question(payload: AskRequest) -> dict[str, Any]:
     state.latest_answer = answer
 
     if not answer.ok:
+        refusal_msg = answer.refusal.message if getattr(answer, "refusal", None) else "Query could not be answered."
+        suggs = list(answer.refusal.suggestions) if getattr(answer, "refusal", None) and answer.refusal.suggestions else []
+        if not suggs and state.warehouse:
+            suggs = style.get_starter_prompts(state.warehouse)
         return {
             "ok": False,
             "question": q,
-            "refusal": answer.refusal.message if getattr(answer, "refusal", None) else "Query could not be answered.",
+            "refusal": refusal_msg,
+            "suggestions": suggs[:4],
         }
 
     # Format KPI tiles

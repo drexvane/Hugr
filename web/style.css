@@ -1297,3 +1297,112 @@ html, body {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* In-App Toast & Notice Banner */
+.hugr-toast-container {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 90%;
+    max-width: 560px;
+    pointer-events: none;
+}
+
+.hugr-toast {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-lg, 14px);
+    padding: 1rem 1.25rem;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    color: #f8fafc;
+    font-size: 0.88rem;
+    animation: toastSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hugr-toast-warning {
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.hugr-toast-error {
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.hugr-toast-info {
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+.toast-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.toast-icon {
+    color: #38bdf8;
+    font-size: 1rem;
+}
+
+.toast-msg {
+    flex: 1;
+    line-height: 1.45;
+    font-weight: 500;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.25rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem;
+}
+
+.toast-close:hover {
+    color: #ffffff;
+}
+
+.toast-suggestions-label {
+    margin-top: 0.6rem;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+}
+
+.toast-suggestions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.toast-pill {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: #93c5fd;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.toast-pill:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+@keyframes toastSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}

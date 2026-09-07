@@ -242,13 +242,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // In-App Toast & Dynamic Query Guidance
+    function showNotification(message, type = 'warning', suggestions = []) {
+        let container = document.getElementById('hugr-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'hugr-toast-container';
+            container.className = 'hugr-toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `hugr-toast hugr-toast-${type}`;
+
+        let html = `<div class="toast-header"><span class="toast-icon">✦</span><span class="toast-msg">${escapeHtml(message)}</span><button type="button" class="toast-close">&times;</button></div>`;
+        if (suggestions && suggestions.length > 0) {
+            html += `<div class="toast-suggestions-label">Try one of these queries:</div><div class="toast-suggestions-list">`;
+            suggestions.forEach(s => {
+                html += `<button type="button" class="toast-pill">${escapeHtml(s)}</button>`;
+            });
+            html += `</div>`;
+        }
+        toast.innerHTML = html;
+
+        toast.querySelector('.toast-close').addEventListener('click', () => toast.remove());
+        toast.querySelectorAll('.toast-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const queryText = btn.textContent;
+                toast.remove();
+                executeAnalysis(queryText);
+            });
+        });
+
+        container.appendChild(toast);
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+        }, 9000);
+    }
+
     // =========================================================================
     // 3. TRANSITION & QUERY EXECUTION (SLOW STAGGERED ENTRANCE)
     // =========================================================================
     heroSearchForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const q = heroSearchInput.value.trim() || heroSearchInput.placeholder;
-        if (q) executeAnalysis(q);
+        let q = heroSearchInput.value.trim();
+        if (!q && heroSearchInput.placeholder && !heroSearchInput.placeholder.includes("Ask anything about your data")) {
+            q = heroSearchInput.placeholder;
+        }
+        if (q) {
+            executeAnalysis(q);
+        } else {
+            heroSearchInput.focus();
+            showNotification("Please enter an analytical question or click one of the suggested queries below.", "info");
+        }
     });
 
     headerQueryForm.addEventListener('submit', (e) => {
@@ -294,9 +340,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Analysis execution failed');
 
+            if (!data.ok) {
+                showNotification(data.refusal || 'Could not answer query for this dataset.', 'warning', data.suggestions || []);
+                return;
+            }
+
             materializeStudio(data);
         } catch (err) {
-            alert('Analysis error: ' + err.message);
+            showNotification('Analysis notice: ' + err.message, 'error');
         } finally {
             studioLoader.classList.add('hidden');
         }
@@ -313,11 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
         queryPillBubble.classList.remove('hidden');
         headerQueryForm.classList.add('hidden');
         activeQueryText.textContent = data.question || currentQuestion;
-
-        if (!data.ok) {
-            alert(data.refusal || 'Could not answer query.');
-            return;
-        }
 
         // 1. Bar Chart (Card 1)
         if (data.primary_chart) {
@@ -500,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resetToInitial();
             renderStatusHeader(data);
         } catch (err) {
-            alert('Upload error: ' + err.message);
+            showNotification('Upload notice: ' + err.message, 'error');
         } finally {
             studioLoader.classList.add('hidden');
         }

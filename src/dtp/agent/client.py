@@ -154,10 +154,11 @@ def is_ollama_available(host: str | None = None) -> bool:
 class OllamaModel:
     """Local Ollama client that drives both structured plans and narrative summaries."""
 
-    def __init__(self, model: str | None = None, host: str | None = None) -> None:
+    def __init__(self, model: str | None = None, host: str | None = None, catalog: Any = None) -> None:
         self.model = model or os.environ.get("OLLAMA_MODEL") or "gemma3:4b"
         self.host = (host or os.environ.get("OLLAMA_HOST") or "http://localhost:11434").rstrip("/")
         self.name = f"ollama-{self.model}"
+        self.catalog = catalog
 
     def respond(self, system: str, user: str,
                 tools: Sequence[dict[str, Any]] | None = None,
@@ -233,7 +234,7 @@ class OllamaModel:
                         return Reply(tool_call=ToolCall(name=TOOL_NAME, input=parsed["input"]))
                 return Reply(text=content)
         except Exception:
-            fields = read_keywords(user)
+            fields = read_keywords(user, catalog=self.catalog)
             if fields.get("metrics"):
                 return plan_reply(**fields)
             return Reply(text=f"{DECLINE_TAG}: could not parse plan from Ollama")
@@ -327,10 +328,20 @@ class KeywordModel:
         patching = self.FOLLOW_UP in system and bool(fields) and is_follow_up
         if not fields.get("metrics") and not patching:
             from .tools import DECLINE_TAG
+            suggs = []
+            if self.catalog:
+                from ..dashboard import style
+                if hasattr(style, "get_starter_prompts_from_catalog"):
+                    suggs = style.get_starter_prompts_from_catalog(self.catalog)
+                elif hasattr(self.catalog, "schema") and self.catalog.schema:
+                    m_list = list(self.catalog.schema.measure_columns.keys())
+                    d_list = self.catalog.schema.dimension_columns
+                    if m_list and d_list:
+                        suggs = [f"total {m_list[0]} by {d_list[0]}", f"top 5 {d_list[0]} by {m_list[0]}"]
+            sugg_str = "; ".join(suggs[:3]) if suggs else "total quantity by item name; top 5 item name by quantity"
             return Reply(text=(
-                DECLINE_TAG + ": This is the keyless stub, which only recognises a "
-                "question naming a metric it knows - try asking for a known measure "
-                "or group. Set " + KEY_ENV + " or run local Ollama for full language parsing."))
+                f"{DECLINE_TAG}: I could not match that to this dataset. Try asking: {sugg_str}."
+            ))
         return plan_reply(**fields)
 
 
@@ -356,6 +367,22 @@ def _needles(registry: dict[str, Any]) -> list[tuple[str, str]]:
                         phrases.add(f"{p_alias} {b}")
                         phrases.add(f"{p_alias}_{b}")
                 phrases.update(bases)
+
+        # Domain synonyms based on metric/dimension naming
+        k_lower = key.lower()
+        if any(w in k_lower for w in ("price", "sales", "revenue", "amount")):
+            phrases.update({"sales", "revenue", "turnover", "spend", "cost", "total sales", "total revenue", "amount", "dollars"})
+        if any(w in k_lower for w in ("quantity", "units", "volume")):
+            phrases.update({"quantity", "volume", "units", "items sold", "total quantity", "unit count"})
+        if "order" in k_lower and "id" in k_lower:
+            phrases.update({"orders", "order count", "number of orders", "order volume"})
+        if k_lower == "row_count":
+            phrases.update({"rows", "records", "count", "record count", "row count"})
+        if any(w in k_lower for w in ("item", "product")):
+            phrases.update({"item", "items", "product", "products", "item name", "product name"})
+        if any(w in k_lower for w in ("choice", "category", "type")):
+            phrases.update({"category", "categories", "description", "choice", "options", "type", "types"})
+
         pairs += [(phrase, key) for phrase in phrases]
     return sorted(pairs, key=lambda p: -len(p[0]))
 
@@ -396,7 +423,7 @@ def read_keywords(question: str, catalog: Any = None) -> dict[str, Any]:
     metrics_map = cat.metrics if cat else M.METRICS
     dims_map = cat.dimensions if cat else M.DIMENSIONS
 
-    raw_text = (question or "").strip()
+    raw_text = (question or "").strip().rstrip("?.!")
     text = " " + raw_text.lower() + " "
     head, sep, tail = text.partition(" by ")
     fields: dict[str, Any] = {}
@@ -420,8 +447,46 @@ def read_keywords(question: str, catalog: Any = None) -> dict[str, Any]:
         count = int(word) if word.isdigit() else _COUNTS.get(word)
         if count:
             fields["limit"] = count
-    if any(word in text for word in _ASCENDING) and metrics:
-        fields["order_by"] = metrics[0]
+
+    is_follow_up = raw_text.lower().startswith(
+        ("by ", "and by ", "now by ", "break down by ", "split by ", "where ", "in ", "for ")
+    ) or not raw_text.lower().partition(" by ")[0].strip()
+
+    # Default metric resolution if dimensions or intent present but no explicit metric matched (and not a follow-up)
+    if not fields.get("metrics") and not is_follow_up:
+        unknown_metric_attempted = False
+        if sep:
+            head_clean = re.sub(r"\b(total|sum|avg|average|min|max|minimum|maximum|what|is|the|are|show|me|of|for|in|break|down|split|group)\b", "", head, flags=re.I).strip()
+            if head_clean:
+                unknown_metric_attempted = True
+
+        if not unknown_metric_attempted:
+            candidate_measures = [k for k in metrics_map if k != "row_count" and not k.startswith("distinct_")]
+            default_metric = None
+            for pref in ("sum_quantity", "sum_price", "revenue", "sales", "quantity", "price"):
+                if pref in metrics_map:
+                    default_metric = pref
+                    break
+            if not default_metric and candidate_measures:
+                default_metric = candidate_measures[0]
+            elif not default_metric and "row_count" in metrics_map:
+                default_metric = "row_count"
+
+            has_dimension = bool(fields.get("by"))
+            has_intent = bool(ordinal) or any(w in text for w in ("top", "best", "worst", "highest", "lowest", "most", "show", "data", "summary", "breakdown", "overview", "what", "which", "list", "all"))
+            if default_metric and (has_dimension or has_intent):
+                fields["metrics"] = [default_metric]
+
+    # Order by resolution: if "top" / "best" / "highest", default to descending sort
+    if any(word in text for word in ("top", "best", "highest", "most", "largest")) and fields.get("metrics"):
+        if "order_by" not in fields:
+            fields["order_by"] = "-" + fields["metrics"][0]
+        if "limit" not in fields:
+            fields["limit"] = 5
+    elif any(word in text for word in _ASCENDING) and fields.get("metrics"):
+        fields["order_by"] = fields["metrics"][0]
+        if "limit" not in fields:
+            fields["limit"] = 5
 
     # Where clause extraction: "where <dim> is/=/in <val>" supporting quotes or multi-word values
     where_match = re.search(
