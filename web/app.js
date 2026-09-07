@@ -80,103 +80,239 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuestion = '';
 
     // =========================================================================
-    // 1. STAR CONSTELLATION AMBIENT CANVAS (CELESTIAL & INTERACTIVE)
+    // 1. SOPHISTICATED INTERACTIVE CONSTELLATION & ELECTRO/SCAN-FIELD SYSTEM
+    //    Sparse, technical star points with 3D parallax, smooth orbital attraction,
+    //    and a calm localized electro/scan-field aura following cursor with zero lasers.
     // =========================================================================
     const canvas = document.getElementById('constellation-canvas');
     const ctx = canvas.getContext('2d');
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    window.addEventListener('resize', () => {
+    function resizeCanvas() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
         triggerChartResize();
-    });
+    }
+    window.addEventListener('resize', resizeCanvas);
 
-    const NUM_STARS = 75;
+    const NUM_STARS = 52;
     const stars = [];
-    const mouse = { x: -1000, y: -1000 };
+    const mouse = { x: -1000, y: -1000, active: false };
+    const scanField = { x: -1000, y: -1000, active: false, angle: 0 };
 
     window.addEventListener('mousemove', (e) => {
         mouse.x = e.clientX;
         mouse.y = e.clientY;
+        mouse.active = true;
+    });
+
+    window.addEventListener('mouseleave', () => {
+        mouse.active = false;
     });
 
     for (let i = 0; i < NUM_STARS; i++) {
+        const ox = Math.random() * width;
+        const oy = Math.random() * height;
+        const z = Math.random() * 0.9 + 0.45; // 3D depth layer: 0.45 (far) to 1.35 (near)
         stars.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            radius: Math.random() * 1.5 + 0.8,
-            baseAlpha: Math.random() * 0.5 + 0.25,
+            ox: ox,
+            oy: oy,
+            x: ox,
+            y: oy,
+            z: z,
+            radius: (Math.random() * 1.0 + 0.9) * z,
+            baseAlpha: (Math.random() * 0.35 + 0.18) * Math.min(z, 1.0),
             phase: Math.random() * Math.PI * 2,
-            twinkleSpeed: Math.random() * 0.02 + 0.01,
-            vx: (Math.random() - 0.5) * 0.16,
-            vy: (Math.random() - 0.5) * 0.16,
-            color: i % 4 === 0 ? 'rgba(59, 130, 246,' : (i % 4 === 1 ? 'rgba(99, 102, 241,' : (i % 4 === 2 ? 'rgba(139, 92, 246,' : 'rgba(148, 163, 184,'))
+            twinkleSpeed: Math.random() * 0.015 + 0.008,
+            vx: 0,
+            vy: 0,
+            driftAngle: Math.random() * Math.PI * 2,
+            driftSpeed: (Math.random() * 0.08 + 0.04) * z,
+            excitation: 0.0
         });
     }
 
     function renderConstellation() {
         ctx.clearRect(0, 0, width, height);
 
-        // Update & Draw Stars
-        for (let i = 0; i < stars.length; i++) {
-            const s = stars[i];
-            s.x += s.vx;
-            s.y += s.vy;
-            s.phase += s.twinkleSpeed;
-
-            // Wrap edges
-            if (s.x < 0) s.x = width;
-            if (s.x > width) s.x = 0;
-            if (s.y < 0) s.y = height;
-            if (s.y > height) s.y = 0;
-
-            const alpha = Math.max(0.15, Math.min(0.9, s.baseAlpha + Math.sin(s.phase) * 0.25));
-
-            // Cursor proximity glow
-            const dx = s.x - mouse.x;
-            const dy = s.y - mouse.y;
-            const dist = Math.hypot(dx, dy);
-            let glowBoost = 0;
-            if (dist < 140) {
-                glowBoost = (140 - dist) / 140 * 0.45;
-            }
-
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.radius + glowBoost * 1.2, 0, Math.PI * 2);
-            ctx.fillStyle = s.color + (alpha + glowBoost) + ')';
-            ctx.fill();
+        // Interpolate scan-field position smoothly toward mouse
+        if (mouse.active) {
+            scanField.x += (mouse.x - scanField.x) * 0.12;
+            scanField.y += (mouse.y - scanField.y) * 0.12;
+            scanField.active = true;
+        } else {
+            scanField.active = false;
         }
 
-        // Connect Nearby Stars with Fine Constellation Lines
+        scanField.angle += 0.008;
+
+        // 1. Draw Subtle Electro/Scan-Field Aura around Cursor
+        if (scanField.active && scanField.x > 0 && scanField.y > 0) {
+            const auraRadius = 160;
+            const auraGrad = ctx.createRadialGradient(
+                scanField.x, scanField.y, 0,
+                scanField.x, scanField.y, auraRadius
+            );
+            auraGrad.addColorStop(0, 'rgba(99, 102, 241, 0.045)');
+            auraGrad.addColorStop(0.45, 'rgba(59, 130, 246, 0.018)');
+            auraGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.beginPath();
+            ctx.arc(scanField.x, scanField.y, auraRadius, 0, Math.PI * 2);
+            ctx.fillStyle = auraGrad;
+            ctx.fill();
+
+            // Refined Concentric Scan Reticle Arcs (Scientific & Technical, not laser-heavy)
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(scanField.x, scanField.y, 52, scanField.angle, scanField.angle + 1.2);
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.18)';
+            ctx.lineWidth = 0.75;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(scanField.x, scanField.y, 96, -scanField.angle * 0.7, -scanField.angle * 0.7 + 0.8);
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+            ctx.lineWidth = 0.75;
+            ctx.stroke();
+
+            // Delicate Center Reticle Ticks
+            const tick = 4;
+            ctx.beginPath();
+            ctx.moveTo(scanField.x - tick, scanField.y);
+            ctx.lineTo(scanField.x + tick, scanField.y);
+            ctx.moveTo(scanField.x, scanField.y - tick);
+            ctx.lineTo(scanField.x, scanField.y + tick);
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.35)';
+            ctx.lineWidth = 0.75;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 2. Physics Update: Drift, 3D Parallax, Smooth Orbital Gravitation
+        const centerX = width / 2;
+        const centerY = height / 2;
+
         for (let i = 0; i < stars.length; i++) {
+            const s = stars[i];
+
+            // Slow natural cosmic drift around anchor
+            s.driftAngle += 0.003;
+            const targetAnchorX = s.ox + Math.cos(s.driftAngle) * 14 * s.z;
+            const targetAnchorY = s.oy + Math.sin(s.driftAngle) * 14 * s.z;
+
+            // 3D Parallax displacement based on cursor position relative to screen center
+            let parallaxX = 0;
+            let parallaxY = 0;
+            if (scanField.active) {
+                parallaxX = (scanField.x - centerX) * 0.022 * (s.z - 0.75);
+                parallaxY = (scanField.y - centerY) * 0.022 * (s.z - 0.75);
+            }
+
+            const targetX = targetAnchorX + parallaxX;
+            const targetY = targetAnchorY + parallaxY;
+
+            // Gravitational pull & orbital tendency toward scanField cursor
+            if (scanField.active) {
+                const dx = scanField.x - s.x;
+                const dy = scanField.y - s.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < 220) {
+                    const pull = (1 - dist / 220) * 0.038 * s.z;
+                    s.vx += dx * pull * 0.05;
+                    s.vy += dy * pull * 0.05;
+
+                    // Excite energy field for passing particles
+                    const exciteFactor = (1 - dist / 220);
+                    s.excitation = Math.max(s.excitation, exciteFactor);
+                }
+            }
+
+            // Spring return to parallax target & velocity damping
+            s.vx += (targetX - s.x) * 0.028;
+            s.vy += (targetY - s.y) * 0.028;
+            s.vx *= 0.88;
+            s.vy *= 0.88;
+
+            s.x += s.vx;
+            s.y += s.vy;
+
+            // Smoothly decay excitation
+            s.excitation *= 0.94;
+            s.phase += s.twinkleSpeed;
+        }
+
+        // 3. Connect Nearby Stars with Fine, Technical Constellation Lines
+        for (let i = 0; i < stars.length; i++) {
+            const s1 = stars[i];
+
             for (let j = i + 1; j < stars.length; j++) {
-                const s1 = stars[i];
                 const s2 = stars[j];
                 const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
-                if (d < 115) {
-                    const lineAlpha = (1 - d / 115) * 0.16;
+                const maxDist = 125;
+
+                if (d < maxDist) {
+                    const baseDistAlpha = (1 - d / maxDist);
+                    const combinedExcitation = Math.max(s1.excitation, s2.excitation);
+
                     ctx.beginPath();
                     ctx.moveTo(s1.x, s1.y);
                     ctx.lineTo(s2.x, s2.y);
-                    ctx.strokeStyle = `rgba(59, 130, 246, ${lineAlpha})`;
-                    ctx.lineWidth = 0.85;
+
+                    if (combinedExcitation > 0.08) {
+                        // Gently illuminates in refined indigo when energized by scan-field
+                        ctx.strokeStyle = `rgba(79, 70, 229, ${0.12 + 0.32 * combinedExcitation})`;
+                        ctx.lineWidth = 0.85;
+                    } else {
+                        // Ultra-clean faint architectural hairline
+                        ctx.strokeStyle = `rgba(148, 163, 184, ${baseDistAlpha * 0.16})`;
+                        ctx.lineWidth = 0.65;
+                    }
                     ctx.stroke();
                 }
             }
 
-            // Connect to mouse if near
-            const dMouse = Math.hypot(stars[i].x - mouse.x, stars[i].y - mouse.y);
-            if (dMouse < 130) {
-                const mAlpha = (1 - dMouse / 130) * 0.22;
-                ctx.beginPath();
-                ctx.moveTo(stars[i].x, stars[i].y);
-                ctx.lineTo(mouse.x, mouse.y);
-                ctx.strokeStyle = `rgba(99, 102, 241, ${mAlpha})`;
-                ctx.lineWidth = 0.9;
-                ctx.stroke();
+            // Connect star to cursor if inside proximity field
+            if (scanField.active) {
+                const distToCursor = Math.hypot(s1.x - scanField.x, s1.y - scanField.y);
+                if (distToCursor < 140) {
+                    const lineAlpha = (1 - distToCursor / 140) * 0.22;
+                    ctx.beginPath();
+                    ctx.moveTo(s1.x, s1.y);
+                    ctx.lineTo(scanField.x, scanField.y);
+                    ctx.strokeStyle = `rgba(79, 70, 229, ${lineAlpha})`;
+                    ctx.lineWidth = 0.75;
+                    ctx.stroke();
+                }
             }
+        }
+
+        // 4. Render Star Points
+        for (let i = 0; i < stars.length; i++) {
+            const s = stars[i];
+            const twinkle = Math.sin(s.phase) * 0.15;
+            const alpha = Math.max(0.12, Math.min(0.85, s.baseAlpha + twinkle + s.excitation * 0.45));
+            const currentRadius = s.radius + s.excitation * 1.5;
+
+            // Excited micro-halo
+            if (s.excitation > 0.12) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, currentRadius + 3.0, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(99, 102, 241, ${s.excitation * 0.18})`;
+                ctx.fill();
+            }
+
+            // Star Core Point
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, currentRadius, 0, Math.PI * 2);
+            if (s.excitation > 0.15) {
+                ctx.fillStyle = `rgba(79, 70, 229, ${alpha})`;
+            } else {
+                ctx.fillStyle = `rgba(30, 41, 59, ${alpha})`;
+            }
+            ctx.fill();
         }
 
         requestAnimationFrame(renderConstellation);

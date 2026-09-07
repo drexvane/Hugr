@@ -96,21 +96,44 @@
     <!-- ================================================================= -->
     <!-- VIEW 1: SPACIOUS INITIAL CANVAS                                   -->
     <!-- ================================================================= -->
+    <!-- ================================================================= -->
+    <!-- VIEW 1: ARCHITECTURAL INITIAL CANVAS                              -->
+    <!-- ================================================================= -->
     <section id="initial-view" class="initial-view">
+        <!-- Subtle Ambient Spatial Instrumentation Indicators -->
+        <div class="spatial-marker marker-tl" aria-hidden="true">
+            <span class="marker-crosshair">+</span>
+            <span class="marker-label">ENGINE // DUCKDB OLAP</span>
+        </div>
+        <div class="spatial-marker marker-tr" aria-hidden="true">
+            <span class="marker-label">PRECISION // ZERO-HALLUCINATION</span>
+            <span class="marker-crosshair">+</span>
+        </div>
+        <div class="spatial-marker marker-bl" aria-hidden="true">
+            <span class="marker-crosshair">+</span>
+            <span class="marker-label">SPATIAL MESH // ACTIVE</span>
+        </div>
+        <div class="spatial-marker marker-br" aria-hidden="true">
+            <span class="marker-label">LATENCY // &lt;2MS</span>
+            <span class="marker-crosshair">+</span>
+        </div>
+
         <div class="hero-center-box">
             <div class="hero-pill-badge">
-                <span class="sparkle-cyan">✦</span>
+                <span class="badge-dot"></span>
                 <span>Autonomous Data Intelligence</span>
+                <span class="badge-sep">/</span>
+                <span class="badge-spec">In-Memory DuckDB</span>
             </div>
 
             <h1 class="hero-heading">
-                What would you like to <span class="gradient-text">discover?</span>
+                What would you like to uncover?
             </h1>
             <p class="hero-caption">
                 Natural-language analytical queries grounded directly in in-memory DuckDB OLAP.
             </p>
 
-            <!-- Large Centered Question Capsule -->
+            <!-- Refined Precision Question Box -->
             <form id="hero-search-form" class="hero-search-form">
                 <div class="hero-capsule">
                     <span class="capsule-sparkle">✦</span>
@@ -122,21 +145,21 @@
                 </div>
             </form>
 
-            <!-- Integrated File Upload Strip -->
+            <!-- Integrated File Upload Strip Directly Beneath -->
             <div class="upload-capsule-strip" id="upload-capsule-strip" title="Drop CSV or Excel to analyze">
                 <input type="file" id="hero-file-picker" multiple accept=".csv,.tsv,.xlsx,.xls" hidden>
                 <div class="upload-strip-inner">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    <span>Drop a CSV or Excel file to analyze, or <strong class="link-browse">browse</strong></span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Drop a CSV, Excel, or multiple files · or <strong class="link-browse">browse</strong></span>
                     <div class="format-tags">
-                        <span>.CSV</span><span>.XLSX</span><span>MULTI-FILE</span>
+                        <span>.CSV</span><span>.XLSX</span><span>PARQUET</span>
                     </div>
                 </div>
             </div>
 
             <!-- Starter Prompt Suggestions -->
             <div class="hero-starter-row">
-                <span class="starter-label">Suggestions:</span>
+                <span class="starter-label">SUGGESTIONS:</span>
                 <div id="starter-pills-list" class="starter-pills-list"></div>
             </div>
         </div>
