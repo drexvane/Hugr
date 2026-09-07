@@ -65,6 +65,25 @@ JOIN_KEYS: dict[str, tuple[str, ...]] = {
 # than passed through to produce a silent zero-row join.
 FOLD = "trim(regexp_replace(lower({col}), '[^a-z0-9]+', ' ', 'g'))"
 
+
+def _normalize_for_duckdb(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert pandas StringDtype (Arrow-backed `str`) to object dtype.
+
+    DuckDB does not recognize pandas 3.x's native `StringDtype` (the
+    Arrow-backed `str`), so `CREATE TABLE ... AS SELECT * FROM df` raises
+    `NotImplementedError: Data type 'str' not recognized`. Converting
+    string columns to `object` (which DuckDB reads as VARCHAR) is the
+    minimum change that makes the ingestion path work.
+
+    Only string columns are touched. Numeric and boolean columns pass
+    through unchanged. A wider conversion (nullable `Int64` / `Float64` /
+    `boolean`) is a known follow-up - see `debug_report.txt` Finding #2.
+    """
+    df = df.copy()
+    for col in df.select_dtypes(include=["string"]).columns:
+        df[col] = df[col].astype("object")
+    return df
+
 # The funnel window is a property of the log, not a constant: `log_window()` reads
 # it from the data. In the shipped extract that is 2017-09-01 to 2018-01-31 - the
 # last 5 of the fact table's 37 months - which is why any funnel metric has to
@@ -97,6 +116,7 @@ class Warehouse:
         """Create an in-memory Warehouse session from any DataFrame with auto-discovered catalog."""
         from .schema_discovery import discover_schema, create_catalog_from_schema
         con = duckdb.connect(":memory:")
+        df = _normalize_for_duckdb(df)
         con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
         schema = discover_schema(df, table_name=name)
         cat = create_catalog_from_schema(schema)
@@ -120,6 +140,7 @@ class Warehouse:
         table_entries = []
         primary_catalog = None
         for name, df in tables.items():
+            df = _normalize_for_duckdb(df)
             con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
             table_entry = version_mod.TableVersion(
                 table=name, file=name + ".parquet", rows=len(df),

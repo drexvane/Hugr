@@ -1,0 +1,518 @@
+================================================================================
+HUGR APPLICATION DEBUG REPORT
+Generated: September 7, 2026
+================================================================================
+
+ISSUE SUMMARY
+-------------
+Application fails to start properly with NotImplementedError in DuckDB when 
+initializing the default dataset. Both /api/status and /api/ask endpoints 
+return HTTP 500 Internal Server Error.
+
+================================================================================
+#1 - UVICORN TRACEBACK FROM RUNNING SERVER
+================================================================================
+
+The server throws the following traceback on both /api/status and /api/ask:
+
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Kunal Poonia\AppData\Local\Programs\Python\Python312\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 421, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  [... middleware stack ...]
+  File "C:\CodeSpace\Projects\Hugr\src\dtp\api\server.py", line 426, in get_status
+    initialize_default_dataset()
+  File "C:\CodeSpace\Projects\Hugr\src\dtp\api\server.py", line 78, in initialize_default_dataset
+    wh = warehouse.Warehouse.from_df(df, name="ecommerce_orders")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\CodeSpace\Projects\Hugr\src\dtp\warehouse.py", line 100, in from_df
+    con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+duckdb.duckdb.NotImplementedException: Not implemented Error: Data type 'str' not recognized
+
+ROOT CAUSE:
+-----------
+The error originates in warehouse.py line 100 where DuckDB attempts to create 
+a table from a pandas DataFrame. DuckDB is reporting that the data type 'str' 
+is not recognized, which indicates the DataFrame has columns with the pandas 
+string dtype (pd.StringDtype()) rather than object dtype.
+
+This is triggered during initialization when loading the ecommerce_orders dataset.
+
+AFFECTED ENDPOINTS:
+-------------------
+- GET /api/status (line 426 in server.py)
+- POST /api/ask (line 553 in server.py)
+
+Both endpoints call initialize_default_dataset() which fails at the same point.
+
+================================================================================
+#4 - NETWORK TAB / CURL TESTING
+================================================================================
+
+TEST 1: POST /api/ask
+----------------------
+Command:
+  Invoke-WebRequest -Uri "http://127.0.0.1:8000/api/ask" -Method POST 
+    -Headers @{"Content-Type"="application/json"} 
+    -Body '{"question":"revenue by market"}'
+
+Response:
+  Status: 500 Internal Server Error
+  Content-Type: text/plain; charset=utf-8
+  Content-Length: 21
+  Server: uvicorn
+  Response Body: "Internal Server Error"
+
+TEST 2: GET /api/status
+------------------------
+Command:
+  Invoke-WebRequest -Uri "http://127.0.0.1:8000/api/status" -Method GET
+
+Response:
+  Status: 500 Internal Server Error
+  Content-Type: text/plain; charset=utf-8
+  Server: uvicorn
+
+FINDINGS:
+---------
+Both endpoints consistently return HTTP 500. The server is running and 
+responding to requests, but all requests that attempt to initialize or access 
+the dataset fail with the same DuckDB NotImplementedException.
+
+================================================================================
+#5 & #6 - BROWSER UI STATUS (TO BE CONFIRMED)
+================================================================================
+
+ACTION REQUIRED:
+Open http://127.0.0.1:8000 in browser and check:
+
+[ ] Does the page header show "E-commerce_Orders" with row/column counts?
+[ ] Or does it show "Connection Issue" / error state?
+[ ] Are there any visible error messages or alerts on the page?
+[ ] Does the browser console show any JavaScript errors?
+[ ] Does the Network tab show the /api/status call returning 500?
+
+Expected behavior: The UI should show a "Connection Issue" or similar error 
+state since both /api/status and /api/ask are returning 500 errors.
+
+================================================================================
+#7 - SERVER RESTART INSTRUCTIONS
+================================================================================
+
+To restart the uvicorn process after applying a fix:
+
+1. Stop the current server:
+   - In Kiro: Ask me to stop the process
+   - Or manually: Press Ctrl+C in the terminal running launch.py
+
+2. Apply your fix to the code (e.g., warehouse.py or ingest.py)
+
+3. Restart the server:
+   python launch.py
+
+4. Verify the fix by testing the endpoints again
+
+================================================================================
+#10 - SCREENSHOTS SECTION
+================================================================================
+
+(This section is for manual screenshots to be pasted/saved)
+
+SCREENSHOT 1: Browser showing http://127.0.0.1:8000
+---------------------------------------------------
+[Paste screenshot here or describe what you see]
+
+SCREENSHOT 2: Browser DevTools Network tab showing /api/status request
+----------------------------------------------------------------------
+[Paste screenshot here showing:
+ - Request URL: http://127.0.0.1:8000/api/status
+ - Status: 500 Internal Server Error
+ - Response headers
+ - Response body
+]
+
+SCREENSHOT 3: Browser DevTools Network tab showing /api/ask request
+-------------------------------------------------------------------
+[Paste screenshot here showing:
+ - Request URL: http://127.0.0.1:8000/api/ask
+ - Method: POST
+ - Request payload: {"question": "revenue by market"}
+ - Status: 500 Internal Server Error
+ - Response
+]
+
+================================================================================
+RECOMMENDED FIX
+================================================================================
+
+The issue is that pandas DataFrames with StringDtype() columns are not 
+compatible with DuckDB's table creation. The fix should be applied in one of 
+these locations:
+
+OPTION 1: Fix in ingest.py where the CSV is loaded
+---------------------------------------------------
+Change dtype_backend parameter or convert after loading:
+
+  df = pd.read_csv(path)  # Use default object dtype instead of string dtype
+  
+  OR
+  
+  df = pd.read_csv(path, dtype_backend="numpy-nullable")
+  # Convert string columns to object
+  for col in df.select_dtypes(include=['string']).columns:
+      df[col] = df[col].astype('object')
+
+OPTION 2: Fix in warehouse.py before creating the table
+--------------------------------------------------------
+Add conversion logic before the CREATE TABLE statement:
+
+  # Convert pandas StringDtype to object dtype for DuckDB compatibility
+  for col in df.select_dtypes(include=['string']).columns:
+      df[col] = df[col].astype('object')
+  
+  con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+================================================================================
+ADDITIONAL FINDINGS & EXPANDED SCOPE
+================================================================================
+
+FINDING #1: ANTHROPIC_BASE_URL Environment Variable Not Honored
+----------------------------------------------------------------
+The codebase does NOT reference ANTHROPIC_BASE_URL anywhere. The AnthropicModel 
+class in client.py (line 104-119) instantiates the Anthropic SDK client with 
+only api_key parameter:
+
+  self._client = Anthropic(api_key=resolved)
+
+The Anthropic SDK's constructor accepts a base_url parameter to override the 
+endpoint, but this code does not pass it. If ANTHROPIC_BASE_URL is set in the 
+environment (e.g., to https://api.xkiro.com), it will be IGNORED.
+
+IMPACT:
+Once the DuckDB fix lands and the catalog loads, any LLM-dependent query will 
+fail at the network layer if:
+- The environment has ANTHROPIC_BASE_URL=https://api.xkiro.com
+- The proxy serves OpenAI-style schema that the Anthropic SDK doesn't expect
+- OR the Anthropic SDK ignores the env var entirely (which it currently does)
+
+WORKAROUND:
+The agent has a --stub mode that uses KeywordModel (no network call). This 
+works without a fix but is limited to keyword matching.
+
+PROPER FIX:
+Modify AnthropicModel.__init__ to honor ANTHROPIC_BASE_URL:
+
+  base_url = os.environ.get('ANTHROPIC_BASE_URL')
+  self._client = Anthropic(api_key=resolved, base_url=base_url) if base_url 
+                 else Anthropic(api_key=resolved)
+
+FINDING #2: Multiple DuckDB Ingestion Sites Need Same Fix
+----------------------------------------------------------
+The recommended fix sites in the original report miss ONE additional code path
+that performs the same CREATE TABLE ... AS SELECT * FROM df pattern:
+
+1. Warehouse.from_tables() at warehouse.py:123
+   - Used for multi-table uploads
+   - Iterates over tables dict and creates each with same pattern:
+     con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+The snapshot loader is NOT in the same blast radius. The function at
+warehouse.py:211 is `open_warehouse`, and it attaches Parquet files as
+DuckDB views via `con.execute(_view_sql(table.table, target / table.file))` -
+DuckDB reads them directly in its native type system. There is no pandas
+DataFrame intermediary and no `CREATE TABLE ... AS SELECT * FROM df` to fail.
+The catalog discovery inside `open_warehouse` does call `.fetchdf()` on a
+LIMIT 1000 sample, but that DataFrame is only used for pure-Python inspection
+by `discover_schema()`; it is not pushed back into DuckDB. So the snapshot
+loader is not affected by the StringDtype bug.
+
+The real exposure surface for this bug is therefore exactly two call sites:
+`from_df` and `from_tables`. Both must be patched.
+
+KNOWN FOLLOW-UP (not in this fix's scope):
+The helper below only handles `include=['string']` (Arrow-backed StringDtype).
+pandas 3.x can also emit nullable extension types - `Int64`, `Float64`,
+`boolean` - for columns with missing values. The current sample CSVs do not
+contain any, and the ecommerce default loads cleanly with string-only
+normalization. If a real uploaded CSV later surfaces a
+`NotImplementedError: Data type 'Int64' not recognized` (or similar), extend
+`_normalize_for_duckdb` to include them in the same `select_dtypes` call. Do
+NOT add that scope pre-emptively: pandas 3.x's behaviour around nullable
+dtypes changes between point releases, and a wider net can mask regressions
+in the discovery path.
+
+BLAST RADIUS COMPARISON:
+
+Option 1 (Fix in ingest.py):
+  ✓ Fixes user CSV upload path
+  ✗ Does NOT fix default dataset bootstrap in server.py:78
+  ✗ Does NOT fix from_tables() multi-file path
+  Scope: Narrow - only ingest.load_file_as_df()
+
+Option 2 (Fix in warehouse.py - both methods) - RECOMMENDED:
+  ✓ Fixes from_df() at line 100 (default dataset bootstrap in server.py:78)
+  ✓ Fixes from_tables() at line 123 (multi-file upload path)
+  ✗ Does NOT need to touch the snapshot loader - different code path
+  Scope: Complete for the actual bug
+
+RECOMMENDED APPROACH:
+Create a helper function in warehouse.py that normalizes DataFrame dtypes
+before any CREATE TABLE operation:
+
+  def _normalize_for_duckdb(df: pd.DataFrame) -> pd.DataFrame:
+      """Convert pandas StringDtype to object dtype for DuckDB compatibility.
+
+      DuckDB does not recognize pandas' native StringDtype (pd.StringDtype()).
+      This converts string columns to object dtype, which DuckDB treats as
+      VARCHAR. Only string columns are touched; numeric and boolean columns
+      pass through unchanged.
+      """
+      df = df.copy()
+      for col in df.select_dtypes(include=['string']).columns:
+          df[col] = df[col].astype('object')
+      return df
+
+Then call it in:
+- from_df() before line 100
+- from_tables() before line 123
+
+FINDING #3: Frontend JSON Parse Error Handling is Fragile
+----------------------------------------------------------
+Location: web/app.js lines 194-196, 293-296, 497-499
+
+Current pattern in fetchStatus():
+  const res = await fetch('/api/status');
+  if (!res.ok) throw new Error('Failed to fetch status');
+  const data = await res.json();
+
+Problem: The code calls res.json() BEFORE checking res.ok. When the server 
+returns a 500 with text/plain body "Internal Server Error", the browser 
+attempts to parse it as JSON and throws:
+
+  "Unexpected token 'I', "Internal S"... is not valid JSON"
+
+This obscures the actual error. The catch block sees a JSON parse error, not 
+the real 500 status.
+
+CORRECT PATTERN:
+  const res = await fetch('/api/status');
+  if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || res.statusText);
+  }
+  const data = await res.json();
+
+This ensures:
+- Non-OK responses are read as text first
+- The actual error message reaches the user
+- JSON parsing only happens on successful responses
+- Future 500s surface as readable errors, not parse exceptions
+
+Affected locations in app.js:
+- Line 194-196: fetchStatus()
+- Line 293-296: executeAnalysis() 
+- Line 497-499: handleUpload()
+
+FINDING #4: Quality Badge is Static HTML, Not Live Data
+--------------------------------------------------------
+Location: web/index.html line 320 and app.js line 223
+
+The "100% Quality" badge in the telemetry drawer is currently a hardcoded 
+value in index.html:
+
+  <span id="telemetry-score-badge" class="audit-badge badge-green">
+    100% Quality
+  </span>
+
+The app.js code at line 223 DOES update it from the /api/status response:
+  
+  telemetryScoreBadge.textContent = `${data.quality_score || 100}% Quality`;
+
+However, because /api/status is returning 500, the fetchStatus() catch block 
+at line 200 only updates the dataset name to "Connection Issue" and never 
+reaches the telemetry badge update.
+
+VERIFICATION NEEDED:
+Once the DuckDB fix lands and /api/status returns 200, confirm that:
+1. The quality_score field exists in the response
+2. The badge updates from the default 100% to the actual value
+3. The badge color class changes based on score (badge-green vs. badge-yellow)
+
+FINDING #5: Default Dataset Bootstrap Bypasses Normal Ingest Path
+------------------------------------------------------------------
+Location: src/dtp/api/server.py line 78
+
+The server.py initialize_default_dataset() function directly calls:
+  
+  df = ingest.load_file_as_df(sample_csv)
+  wh = warehouse.Warehouse.from_df(df, name="ecommerce_orders")
+
+This means:
+- Fixing ONLY ingest.py WILL fix this path
+- But any future direct DataFrame construction (e.g., from uploaded bytes, 
+  from API payload) that bypasses ingest.load_file_as_df() will still fail
+
+The safer boundary is warehouse.py, which is the single chokepoint where 
+DataFrames enter DuckDB.
+
+================================================================================
+REVISED FIX RECOMMENDATION
+================================================================================
+
+PRIORITY 1: Fix DuckDB StringDtype Incompatibility (warehouse.py)
+------------------------------------------------------------------
+Add normalization helper and call from all CREATE TABLE sites:
+
+Location: src/dtp/warehouse.py
+
+1. Add helper function after imports:
+
+def _normalize_for_duckdb(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert pandas StringDtype to object dtype for DuckDB compatibility.
+    
+    DuckDB does not recognize pandas' native StringDtype (pd.StringDtype()).
+    This converts string columns to object dtype, which DuckDB treats as VARCHAR.
+    """
+    df = df.copy()
+    for col in df.select_dtypes(include=['string']).columns:
+        df[col] = df[col].astype('object')
+    return df
+
+2. Update from_df() at line 100:
+
+BEFORE:
+    con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+AFTER:
+    df = _normalize_for_duckdb(df)
+    con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+3. Update from_tables() at line 118:
+
+BEFORE:
+    for name, df in tables.items():
+        con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+AFTER:
+    for name, df in tables.items():
+        df = _normalize_for_duckdb(df)
+        con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
+
+PRIORITY 2: Improve Frontend Error Handling (web/app.js)
+---------------------------------------------------------
+Update all three fetch sites to check res.ok BEFORE calling res.json():
+
+1. fetchStatus() at line 194-196:
+
+BEFORE:
+    const res = await fetch('/api/status');
+    if (!res.ok) throw new Error('Failed to fetch status');
+    const data = await res.json();
+
+AFTER:
+    const res = await fetch('/api/status');
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+    }
+    const data = await res.json();
+
+2. executeAnalysis() at line 293-296:
+
+BEFORE:
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Analysis execution failed');
+
+AFTER:
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+    }
+    const data = await res.json();
+
+3. handleUpload() at line 497-499:
+
+BEFORE:
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+AFTER:
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+    }
+    const data = await res.json();
+
+PRIORITY 3: Honor ANTHROPIC_BASE_URL (client.py) - OPTIONAL
+------------------------------------------------------------
+Only needed if using a proxy or alternative endpoint.
+
+Location: src/dtp/agent/client.py line 119
+
+BEFORE:
+    self._client = Anthropic(api_key=resolved)
+
+AFTER:
+    import os
+    base_url = os.environ.get('ANTHROPIC_BASE_URL')
+    self._client = Anthropic(
+        api_key=resolved,
+        base_url=base_url
+    ) if base_url else Anthropic(api_key=resolved)
+
+================================================================================
+VERIFICATION CHECKLIST (POST-FIX)
+================================================================================
+
+After applying Priority 1 fix and restarting server:
+
+[ ] GET /api/status returns 200 OK with JSON body
+[ ] POST /api/ask returns 200 OK with valid response
+[ ] Browser shows "E-commerce_Orders" with correct row/column counts
+[ ] Dataset health badge shows actual quality score (not hardcoded 100%)
+[ ] Analysis queries return chart data without JSON parse errors
+[ ] Multi-file upload works (tests from_tables path)
+[ ] Loading a snapshot from data/versions/ still works - regression check that
+    the view-attachment path was not affected (it should not be, since the
+    snapshot loader does not use from_df/from_tables)
+
+After applying Priority 2 fix:
+[ ] A deliberate server error surfaces as readable text, not JSON parse error
+
+After applying Priority 3 fix (if needed):
+[ ] Agent queries work with ANTHROPIC_BASE_URL set to proxy endpoint
+[ ] OR --stub mode continues to work without network calls
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. ✓ Captured uvicorn traceback from running server
+2. ✓ Tested /api/ask and /api/status with curl
+3. ✓ Analyzed client.py for ANTHROPIC_BASE_URL handling
+4. ✓ Found additional DuckDB ingestion sites needing same fix
+5. ✓ Identified frontend error handling fragility
+6. ✓ Confirmed quality badge is static HTML default
+7. [ ] Apply Priority 1 fix (warehouse.py normalization)
+8. [ ] Restart server
+9. [ ] Verify all endpoints return 200 OK
+10. [ ] Verify browser UI loads with live data
+11. [ ] (Optional) Apply Priority 2 fix for better error UX
+12. [ ] (Optional) Apply Priority 3 fix if using proxy
+
+CORRECTIONS APPLIED TO THIS REPORT
+----------------------------------
+- Finding #2 corrected: the snapshot loader (open_warehouse at line 211) is
+  NOT affected by the same bug. It attaches Parquet as DuckDB views, not via
+  the failing pattern. Real exposure is exactly two call sites: from_df and
+  from_tables.
+- KNOWN FOLLOW-UP added under Finding #2: nullable extension types
+  (Int64, Float64, boolean) are not covered by the helper; only string
+  columns are. Real user data with missing values may surface this later.
+- Verification checklist snapshot-loader line reframed: it is now a
+  regression check, not a same-fix-needed site.
+
+================================================================================
+END OF REPORT
+================================================================================
