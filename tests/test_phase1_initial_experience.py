@@ -1,7 +1,7 @@
 """Tests for Phase 1 — Initial Experience.
 
 Validates:
-- Hugr branding, aesthetic tokens, and CSS injection
+- Cipher branding, aesthetic tokens, and CSS injection
 - Dynamic dataset status pill and hero introduction
 - Dynamic starter prompts derived from dataset schema (zero hardcoded assumptions)
 - Capability cards for initial empty state
@@ -48,11 +48,11 @@ def test_custom_css_contains_design_system_tokens():
     assert "#090d16" in css  # Canvas background
     assert "Outfit" in css  # Heading font
     assert "Inter" in css  # Body font
-    assert "hugr-header" in css
-    assert "hugr-glyph" in css
-    assert "hugr-wordmark" in css
-    assert "hugr-cards-grid" in css
-    assert "hugr-dataset-pill" in css
+    assert "cipher-header" in css
+    assert "cipher-glyph" in css
+    assert "cipher-wordmark" in css
+    assert "cipher-cards-grid" in css
+    assert "cipher-dataset-pill" in css
 
 
 def test_starter_prompts_dynamically_derived_from_schema():
@@ -117,7 +117,7 @@ def test_app_ask_screen_initial_experience_layout(asking):
 
 
 def test_app_boots_cleanly_without_snapshots(tmp_path, monkeypatch):
-    """Verify that Hugr launches gracefully into Universal Ingestion mode even if data/versions is empty."""
+    """Verify that Cipher launches gracefully into Universal Ingestion mode even if data/versions is empty."""
     monkeypatch.setattr(warehouse, "VERSIONS_DIR", tmp_path)
     monkeypatch.setattr(versioning, "VERSIONS_DIR", tmp_path)
     monkeypatch.setattr(client, "api_key", lambda: None)
@@ -128,4 +128,5 @@ def test_app_boots_cleanly_without_snapshots(tmp_path, monkeypatch):
     assert not at.exception
     assert len(at.text_input) == 1
     assert [b.label for b in at.button] == ["Ask"]
-    assert "Hugr" in at.sidebar.title[0].value
+    assert "Cipher" in at.sidebar.title[0].value
+

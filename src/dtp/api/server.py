@@ -1,4 +1,4 @@
-"""FastAPI Backend for Hugr Premium Web Experience.
+"""FastAPI Backend for Cipher Premium Web Experience.
 
 Directly bridges the analytical core (Warehouse, Ingest, Schema Discovery, Catalog,
 Agent Session, Drilldown, and Export) to the modern frontend application.
@@ -28,7 +28,7 @@ WEB_DIR = REPO_ROOT / "web"
 SAMPLE_DATASET_PATH = REPO_ROOT / "data" / "sample_datasets" / "ecommerce_orders.csv"
 
 app = FastAPI(
-    title="Hugr AI Data Intelligence Engine",
+    title="Cipher AI Data Intelligence Engine",
     description="Deterministic, zero-hallucination conversational analytics over arbitrary datasets.",
     version="1.0.0",
 )

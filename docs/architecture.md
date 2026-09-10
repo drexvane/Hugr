@@ -1,12 +1,12 @@
-# Hugr Universal AI Data Analyst — System Architecture
+# Cipher Universal AI Data Analyst — System Architecture
 
-This document describes the architectural design of Hugr as a **Universal, Dataset-Agnostic Data-to-Insights Platform**. It covers the system context, component containers, dynamic schema discovery, DuckDB analytical query engine, LLM planning and hallucination guardrail flow, and storage architectures.
+This document describes the architectural design of Cipher as a **Universal, Dataset-Agnostic Data-to-Insights Platform**. It covers the system context, component containers, dynamic schema discovery, DuckDB analytical query engine, LLM planning and hallucination guardrail flow, and storage architectures.
 
 ---
 
 ## 1. High-Level Architecture Overview
 
-Hugr processes arbitrary tabular datasets through five core layers:
+Cipher processes arbitrary tabular datasets through five core layers:
 
 ```mermaid
 flowchart TD
@@ -53,14 +53,14 @@ C4Context
 
     Person(user, "Business / Data User", "Uploads arbitrary datasets, explores dashboards, asks natural language questions.")
     
-    System(hugr, "Hugr Universal Analytics Platform", "Ingests, profiles, auto-discovers schemas, provides embedded OLAP analytics, and answers questions using planned query execution.")
+    System(cipher, "Cipher Universal Analytics Platform", "Ingests, profiles, auto-discovers schemas, provides embedded OLAP analytics, and answers questions using planned query execution.")
     
     System_Ext(open_data, "Public / Enterprise Data Sources", "CSVs, Excel files, open data portals (HR, Sales, Health, Finance, etc.).")
     System_Ext(llm, "LLM Service (Anthropic Claude / Local)", "Translates natural language questions into structured Plans and crafts concise summaries.")
 
-    Rel(open_data, hugr, "Loads raw tabular data into", "CSV/Parquet")
-    Rel(user, hugr, "Interacts with and queries via", "Web UI / CLI / API")
-    Rel(hugr, llm, "Requests structured query plan & prose from", "JSON / Prompt API")
+    Rel(open_data, cipher, "Loads raw tabular data into", "CSV/Parquet")
+    Rel(user, cipher, "Interacts with and queries via", "Web UI / CLI / API")
+    Rel(cipher, llm, "Requests structured query plan & prose from", "JSON / Prompt API")
 ```
 
 ---
@@ -69,7 +69,7 @@ C4Context
 
 ```mermaid
 C4Container
-    title C4 Container Diagram - Hugr Architecture
+    title C4 Container Diagram - Cipher Architecture
 
     Container(cli_ui, "CLI & Presentation Interfaces", "Python Click / Streamlit", "Exposes interactive terminal (`dtp ask`, `dtp pipeline`) and dashboard screens.")
     
@@ -95,7 +95,7 @@ C4Container
 
 ## 4. Database & Analytical Engine Architecture
 
-Hugr uses **DuckDB** as an embedded in-memory OLAP warehouse reading columnar Parquet snapshots:
+Cipher uses **DuckDB** as an embedded in-memory OLAP warehouse reading columnar Parquet snapshots:
 
 ```mermaid
 flowchart LR
@@ -137,7 +137,7 @@ flowchart LR
 
 ## 5. LLM Query Planning & Hallucination Guard Architecture
 
-Hugr avoids the catastrophic failure modes of naive Text-to-SQL by enforcing an **intermediate structured query plan**:
+Cipher avoids the catastrophic failure modes of naive Text-to-SQL by enforcing an **intermediate structured query plan**:
 
 ```mermaid
 sequenceDiagram

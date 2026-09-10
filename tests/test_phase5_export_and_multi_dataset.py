@@ -40,7 +40,7 @@ def test_markdown_report_generation(sample_answer):
     ans, wh = sample_answer
     report_md = export.generate_markdown_report(ans, wh, dataset_name="E-Commerce Orders")
 
-    assert "# ✦ Hugr Executive Data Intelligence Report" in report_md
+    assert "# ✦ Cipher Executive Data Intelligence Report" in report_md
     assert "E-Commerce Orders" in report_md
     assert "## 1. Executive Summary" in report_md
     assert "## 2. Key Metrics & Performance Indicators" in report_md
@@ -55,7 +55,7 @@ def test_html_report_generation(sample_answer):
     report_html = export.generate_html_report(ans, wh, dataset_name="E-Commerce Orders")
 
     assert "<!DOCTYPE html>" in report_html
-    assert "Hugr Intelligence Report" in report_html
+    assert "Cipher Intelligence Report" in report_html
     assert "E-Commerce Orders" in report_html
     assert "Key Performance Indicators" in report_html
     assert "data-table" in report_html

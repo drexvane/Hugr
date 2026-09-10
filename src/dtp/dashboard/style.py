@@ -1,9 +1,9 @@
-"""Styling and visual components for the Hugr AI Data Analyst interface.
+"""Styling and visual components for the Cipher AI Data Analyst interface.
 
 Implements the modern, minimal, refined visual direction specified in UI_DESIGN_SPEC.md:
 - Deep dark slate/zinc background (#090d16) with subtle glowing gradients
 - Glassmorphic card surfaces with soft elevation and fine borders
-- Distinctive Hugr branding and glowing status indicators
+- Distinctive Cipher branding and glowing status indicators
 - Intentional initial composition that avoids emptiness while maintaining restraint
 - Dynamic starter prompts derived from the active dataset's schema
 """
@@ -36,7 +36,7 @@ html, body, [class*="css"], [class*="st-"] {
 }
 
 /* Top brand navigation bar */
-.hugr-header {
+.cipher-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -45,13 +45,13 @@ html, body, [class*="css"], [class*="st-"] {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.hugr-logo-container {
+.cipher-logo-container {
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
 
-.hugr-glyph {
+.cipher-glyph {
     font-size: 1.6rem;
     background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
     -webkit-background-clip: text;
@@ -59,7 +59,7 @@ html, body, [class*="css"], [class*="st-"] {
     filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.5));
 }
 
-.hugr-wordmark {
+.cipher-wordmark {
     font-family: 'Outfit', sans-serif;
     font-size: 1.75rem;
     font-weight: 700;
@@ -69,7 +69,7 @@ html, body, [class*="css"], [class*="st-"] {
     -webkit-text-fill-color: transparent;
 }
 
-.hugr-badge {
+.cipher-badge {
     font-size: 0.72rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -82,7 +82,7 @@ html, body, [class*="css"], [class*="st-"] {
 }
 
 /* Active Dataset Banner / Pill */
-.hugr-dataset-pill {
+.cipher-dataset-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
@@ -96,7 +96,7 @@ html, body, [class*="css"], [class*="st-"] {
     margin-bottom: 1.25rem;
 }
 
-.hugr-status-dot {
+.cipher-status-dot {
     width: 7px;
     height: 7px;
     border-radius: 50%;
@@ -104,19 +104,19 @@ html, body, [class*="css"], [class*="st-"] {
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
 }
 
-.hugr-dataset-name {
+.cipher-dataset-name {
     color: #f1f5f9;
     font-weight: 600;
 }
 
 /* Hero Section */
-.hugr-hero {
+.cipher-hero {
     text-align: center;
     max-width: 680px;
     margin: 1.25rem auto 2rem auto;
 }
 
-.hugr-hero-title {
+.cipher-hero-title {
     font-family: 'Outfit', sans-serif;
     font-size: 2.25rem;
     font-weight: 700;
@@ -128,7 +128,7 @@ html, body, [class*="css"], [class*="st-"] {
     -webkit-text-fill-color: transparent;
 }
 
-.hugr-hero-subtitle {
+.cipher-hero-subtitle {
     font-size: 1.05rem;
     color: #64748b;
     line-height: 1.5;
@@ -179,7 +179,7 @@ div[data-testid="stFileUploader"]:hover {
 }
 
 /* Welcome Cards Grid */
-.hugr-cards-grid {
+.cipher-cards-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
@@ -187,12 +187,12 @@ div[data-testid="stFileUploader"]:hover {
 }
 
 @media (max-width: 768px) {
-    .hugr-cards-grid {
+    .cipher-cards-grid {
         grid-template-columns: 1fr;
     }
 }
 
-.hugr-card {
+.cipher-card {
     background: rgba(15, 23, 42, 0.6);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.07);
@@ -201,17 +201,17 @@ div[data-testid="stFileUploader"]:hover {
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.hugr-card:hover {
+.cipher-card:hover {
     transform: translateY(-2px);
     border-color: rgba(99, 102, 241, 0.35);
 }
 
-.hugr-card-icon {
+.cipher-card-icon {
     font-size: 1.4rem;
     margin-bottom: 0.75rem;
 }
 
-.hugr-card-title {
+.cipher-card-title {
     font-family: 'Outfit', sans-serif;
     font-size: 1.05rem;
     font-weight: 600;
@@ -219,7 +219,7 @@ div[data-testid="stFileUploader"]:hover {
     margin-bottom: 0.35rem;
 }
 
-.hugr-card-desc {
+.cipher-card-desc {
     font-size: 0.85rem;
     color: #64748b;
     line-height: 1.45;
@@ -250,7 +250,7 @@ div[data-testid="stMetricValue"] {
 }
 
 /* Dataset Readiness Card */
-.hugr-readiness-card {
+.cipher-readiness-card {
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(16, 185, 129, 0.2);
@@ -260,7 +260,7 @@ div[data-testid="stMetricValue"] {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
-.hugr-readiness-header {
+.cipher-readiness-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -269,7 +269,7 @@ div[data-testid="stMetricValue"] {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.hugr-readiness-status {
+.cipher-readiness-status {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -280,7 +280,7 @@ div[data-testid="stMetricValue"] {
     color: #34d399;
 }
 
-.hugr-quality-badge {
+.cipher-quality-badge {
     font-size: 0.75rem;
     font-weight: 500;
     padding: 0.2rem 0.6rem;
@@ -290,45 +290,45 @@ div[data-testid="stMetricValue"] {
     border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
-.hugr-readiness-grid {
+.cipher-readiness-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
 }
 
 @media (max-width: 640px) {
-    .hugr-readiness-grid {
+    .cipher-readiness-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
-.hugr-readiness-stat {
+.cipher-readiness-stat {
     display: flex;
     flex-direction: column;
 }
 
-.hugr-stat-num {
+.cipher-stat-num {
     font-family: 'Outfit', sans-serif;
     font-size: 1.35rem;
     font-weight: 600;
     color: #f8fafc;
 }
 
-.hugr-stat-label {
+.cipher-stat-label {
     font-size: 0.75rem;
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
-.hugr-tag-container {
+.cipher-tag-container {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
     margin: 0.4rem 0;
 }
 
-.hugr-tag {
+.cipher-tag {
     font-size: 0.78rem;
     padding: 0.2rem 0.55rem;
     border-radius: 6px;
@@ -337,18 +337,18 @@ div[data-testid="stMetricValue"] {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.hugr-tag-measure {
+.cipher-tag-measure {
     border-color: rgba(99, 102, 241, 0.3);
     color: #c7d2fe;
 }
 
-.hugr-tag-dim {
+.cipher-tag-dim {
     border-color: rgba(6, 182, 212, 0.3);
     color: #a5f3fc;
 }
 
 /* Phase 3: Conversational Analytics & Exploration */
-.hugr-chips-container {
+.cipher-chips-container {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -356,7 +356,7 @@ div[data-testid="stMetricValue"] {
     margin: 0.8rem 0 1.2rem 0;
 }
 
-.hugr-chips-label {
+.cipher-chips-label {
     font-size: 0.78rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -365,7 +365,7 @@ div[data-testid="stMetricValue"] {
     margin-right: 0.25rem;
 }
 
-.hugr-chip {
+.cipher-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -378,13 +378,13 @@ div[data-testid="stMetricValue"] {
     transition: all 0.2s ease;
 }
 
-.hugr-chip:hover {
+.cipher-chip:hover {
     background: rgba(99, 102, 241, 0.15);
     border-color: rgba(99, 102, 241, 0.5);
     color: #ffffff;
 }
 
-.hugr-verification-badge {
+.cipher-verification-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -398,7 +398,7 @@ div[data-testid="stMetricValue"] {
     margin: 0.5rem 0;
 }
 
-.hugr-turn-badge {
+.cipher-turn-badge {
     font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -410,7 +410,7 @@ div[data-testid="stMetricValue"] {
     border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
-.hugr-insight-card {
+.cipher-insight-card {
     background: rgba(15, 23, 42, 0.5);
     backdrop-filter: blur(12px);
     border-left: 3px solid #6366f1;
@@ -421,7 +421,7 @@ div[data-testid="stMetricValue"] {
 }
 
 /* Phase 4: Drilldowns & Anomaly Detection */
-.hugr-anomaly-alert {
+.cipher-anomaly-alert {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -434,12 +434,12 @@ div[data-testid="stMetricValue"] {
     font-size: 0.88rem;
 }
 
-.hugr-anomaly-icon {
+.cipher-anomaly-icon {
     font-size: 1.25rem;
     color: #f59e0b;
 }
 
-.hugr-narrative-card {
+.cipher-narrative-card {
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -449,7 +449,7 @@ div[data-testid="stMetricValue"] {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
-.hugr-narrative-header {
+.cipher-narrative-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -463,7 +463,7 @@ div[data-testid="stMetricValue"] {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.hugr-narrative-item {
+.cipher-narrative-item {
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
@@ -473,7 +473,7 @@ div[data-testid="stMetricValue"] {
     line-height: 1.45;
 }
 
-.hugr-drilldown-container {
+.cipher-drilldown-container {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -481,7 +481,7 @@ div[data-testid="stMetricValue"] {
     margin: 0.6rem 0 1rem 0;
 }
 
-.hugr-drilldown-label {
+.cipher-drilldown-label {
     font-size: 0.78rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -490,7 +490,7 @@ div[data-testid="stMetricValue"] {
     margin-right: 0.25rem;
 }
 
-.hugr-drilldown-chip {
+.cipher-drilldown-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -504,7 +504,7 @@ div[data-testid="stMetricValue"] {
 }
 
 /* Phase 5: Export, Sharing & Multi-Dataset Synthesis */
-.hugr-export-box {
+.cipher-export-box {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
@@ -512,7 +512,7 @@ div[data-testid="stMetricValue"] {
     margin: 0.8rem 0;
 }
 
-.hugr-join-card {
+.cipher-join-card {
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(14px);
     border: 1px solid rgba(99, 102, 241, 0.25);
@@ -521,7 +521,7 @@ div[data-testid="stMetricValue"] {
     margin: 0.9rem 0;
 }
 
-.hugr-join-badge {
+.cipher-join-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -538,7 +538,7 @@ div[data-testid="stMetricValue"] {
 
 
 def inject_custom_css() -> None:
-    """Inject Hugr modern aesthetic stylesheet into Streamlit page."""
+    """Inject Cipher modern aesthetic stylesheet into Streamlit page."""
     st.markdown(HUGR_CSS, unsafe_allow_html=True)
 
 
@@ -546,11 +546,11 @@ def render_brand_header() -> None:
     """Render top brand navigation bar."""
     st.markdown(
         """
-        <div class="hugr-header">
-            <div class="hugr-logo-container">
-                <span class="hugr-glyph">✦</span>
-                <span class="hugr-wordmark">Hugr</span>
-                <span class="hugr-badge">Universal AI Data Analyst</span>
+        <div class="cipher-header">
+            <div class="cipher-logo-container">
+                <span class="cipher-glyph">✦</span>
+                <span class="cipher-wordmark">Cipher</span>
+                <span class="cipher-badge">Universal AI Data Analyst</span>
             </div>
         </div>
         """,
@@ -562,10 +562,10 @@ def render_hero_intro() -> None:
     """Render clean central hero introducing the interaction."""
     st.markdown(
         """
-        <div class="hugr-hero">
-            <div class="hugr-hero-title">Ask anything about your data</div>
-            <div class="hugr-hero-subtitle">
-                Upload any CSV or Excel file. Hugr automatically discovers columns, 
+        <div class="cipher-hero">
+            <div class="cipher-hero-title">Ask anything about your data</div>
+            <div class="cipher-hero-subtitle">
+                Upload any CSV or Excel file. Cipher automatically discovers columns, 
                 measures, and trends, returning verified visual insights.
             </div>
         </div>
@@ -578,10 +578,10 @@ def render_dataset_pill(dataset_name: str, row_count: int, col_count: int) -> No
     """Render clean status pill indicating the active dataset."""
     st.markdown(
         f"""
-        <div class="hugr-dataset-pill">
-            <span class="hugr-status-dot"></span>
+        <div class="cipher-dataset-pill">
+            <span class="cipher-status-dot"></span>
             <span>Active Dataset:</span>
-            <span class="hugr-dataset-name">{dataset_name}</span>
+            <span class="cipher-dataset-name">{dataset_name}</span>
             <span>·</span>
             <span>{row_count:,} rows</span>
             <span>·</span>
@@ -596,25 +596,25 @@ def render_initial_cards() -> None:
     """Render the 3 intentional capability cards when no questions have been asked yet."""
     st.markdown(
         """
-        <div class="hugr-cards-grid">
-            <div class="hugr-card">
-                <div class="hugr-card-icon">💬</div>
-                <div class="hugr-card-title">Ask Naturally</div>
-                <div class="hugr-card-desc">
+        <div class="cipher-cards-grid">
+            <div class="cipher-card">
+                <div class="cipher-card-icon">💬</div>
+                <div class="cipher-card-title">Ask Naturally</div>
+                <div class="cipher-card-desc">
                     Inquire about totals, averages, rankings, or distributions without writing SQL or building manual charts.
                 </div>
             </div>
-            <div class="hugr-card">
-                <div class="hugr-card-icon">⚡</div>
-                <div class="hugr-card-title">Dynamic Discovery</div>
-                <div class="hugr-card-desc">
+            <div class="cipher-card">
+                <div class="cipher-card-icon">⚡</div>
+                <div class="cipher-card-title">Dynamic Discovery</div>
+                <div class="cipher-card-desc">
                     Automatic column classification detects numeric measures, categorical dimensions, and temporal grains in seconds.
                 </div>
             </div>
-            <div class="hugr-card">
-                <div class="hugr-card-icon">🛡️</div>
-                <div class="hugr-card-title">Hallucination Guard</div>
-                <div class="hugr-card-desc">
+            <div class="cipher-card">
+                <div class="cipher-card-icon">🛡️</div>
+                <div class="cipher-card-title">Hallucination Guard</div>
+                <div class="cipher-card-desc">
                     Every number and trend in the generated answer is strictly cross-verified against actual DuckDB execution data.
                 </div>
             </div>
@@ -686,30 +686,30 @@ def render_dataset_readiness(result: Any) -> None:
 
     st.markdown(
         f"""
-        <div class="hugr-readiness-card">
-            <div class="hugr-readiness-header">
-                <div class="hugr-readiness-status">
-                    <span class="hugr-status-dot"></span>
+        <div class="cipher-readiness-card">
+            <div class="cipher-readiness-header">
+                <div class="cipher-readiness-status">
+                    <span class="cipher-status-dot"></span>
                     <span>Ready for Analysis — Table: <code>{table_name}</code></span>
                 </div>
-                <div class="hugr-quality-badge">{quality}% Quality Score</div>
+                <div class="cipher-quality-badge">{quality}% Quality Score</div>
             </div>
-            <div class="hugr-readiness-grid">
-                <div class="hugr-readiness-stat">
-                    <span class="hugr-stat-num">{n_rows:,}</span>
-                    <span class="hugr-stat-label">Records</span>
+            <div class="cipher-readiness-grid">
+                <div class="cipher-readiness-stat">
+                    <span class="cipher-stat-num">{n_rows:,}</span>
+                    <span class="cipher-stat-label">Records</span>
                 </div>
-                <div class="hugr-readiness-stat">
-                    <span class="hugr-stat-num">{n_cols}</span>
-                    <span class="hugr-stat-label">Columns</span>
+                <div class="cipher-readiness-stat">
+                    <span class="cipher-stat-num">{n_cols}</span>
+                    <span class="cipher-stat-label">Columns</span>
                 </div>
-                <div class="hugr-readiness-stat">
-                    <span class="hugr-stat-num">{n_measures}</span>
-                    <span class="hugr-stat-label">Measures</span>
+                <div class="cipher-readiness-stat">
+                    <span class="cipher-stat-num">{n_measures}</span>
+                    <span class="cipher-stat-label">Measures</span>
                 </div>
-                <div class="hugr-readiness-stat">
-                    <span class="hugr-stat-num">{n_dims}</span>
-                    <span class="hugr-stat-label">Dimensions</span>
+                <div class="cipher-readiness-stat">
+                    <span class="cipher-stat-num">{n_dims}</span>
+                    <span class="cipher-stat-label">Dimensions</span>
                 </div>
             </div>
         </div>
@@ -722,28 +722,28 @@ def render_dataset_readiness(result: Any) -> None:
         with c1:
             st.markdown("**Discovered Measures**")
             if schema.measure_columns:
-                tags = " ".join([f'<span class="hugr-tag hugr-tag-measure">{col} ({unit})</span>' for col, unit in schema.measure_columns.items()])
-                st.markdown(f'<div class="hugr-tag-container">{tags}</div>', unsafe_allow_html=True)
+                tags = " ".join([f'<span class="cipher-tag cipher-tag-measure">{col} ({unit})</span>' for col, unit in schema.measure_columns.items()])
+                st.markdown(f'<div class="cipher-tag-container">{tags}</div>', unsafe_allow_html=True)
             else:
                 st.caption("No numeric measures detected.")
 
             if schema.time_columns:
                 st.markdown("**Temporal Grains**")
-                time_tags = " ".join([f'<span class="hugr-tag">{col}</span>' for col in schema.time_columns])
-                st.markdown(f'<div class="hugr-tag-container">{time_tags}</div>', unsafe_allow_html=True)
+                time_tags = " ".join([f'<span class="cipher-tag">{col}</span>' for col in schema.time_columns])
+                st.markdown(f'<div class="cipher-tag-container">{time_tags}</div>', unsafe_allow_html=True)
 
         with c2:
             st.markdown("**Discovered Dimensions**")
             if schema.dimension_columns:
-                tags = " ".join([f'<span class="hugr-tag hugr-tag-dim">{col}</span>' for col in schema.dimension_columns[:15]])
-                st.markdown(f'<div class="hugr-tag-container">{tags}</div>', unsafe_allow_html=True)
+                tags = " ".join([f'<span class="cipher-tag cipher-tag-dim">{col}</span>' for col in schema.dimension_columns[:15]])
+                st.markdown(f'<div class="cipher-tag-container">{tags}</div>', unsafe_allow_html=True)
             else:
                 st.caption("No categorical dimensions detected.")
 
             if profile.candidate_keys:
                 st.markdown("**Candidate Keys**")
-                key_tags = " ".join([f'<span class="hugr-tag">{k}</span>' for k in profile.candidate_keys])
-                st.markdown(f'<div class="hugr-tag-container">{key_tags}</div>', unsafe_allow_html=True)
+                key_tags = " ".join([f'<span class="cipher-tag">{k}</span>' for k in profile.candidate_keys])
+                st.markdown(f'<div class="cipher-tag-container">{key_tags}</div>', unsafe_allow_html=True)
 
         if cleaning:
             notes = []
@@ -833,11 +833,11 @@ def render_follow_up_chips(suggestions: list[str]) -> None:
     """Render sleek pill chips suggesting logical next turns."""
     if not suggestions:
         return
-    chips_html = "".join([f'<span class="hugr-chip">↳ {s}</span>' for s in suggestions])
+    chips_html = "".join([f'<span class="cipher-chip">↳ {s}</span>' for s in suggestions])
     st.markdown(
         f"""
-        <div class="hugr-chips-container">
-            <span class="hugr-chips-label">Suggested follow-ups:</span>
+        <div class="cipher-chips-container">
+            <span class="cipher-chips-label">Suggested follow-ups:</span>
             {chips_html}
         </div>
         """,
@@ -849,7 +849,7 @@ def render_verification_badge(model_name: str) -> None:
     """Render zero-hallucination verification badge."""
     st.markdown(
         f"""
-        <div class="hugr-verification-badge">
+        <div class="cipher-verification-badge">
             <span>🛡️ Verified Result</span>
             <span>·</span>
             <span>Computed by DuckDB OLAP Engine</span>
@@ -873,8 +873,8 @@ def render_anomaly_alert(anomalies: list[Any]) -> None:
         pct = abs(getattr(a, "pct_from_median", 0.0))
         st.markdown(
             f"""
-            <div class="hugr-anomaly-alert">
-                <span class="hugr-anomaly-icon">⚠️</span>
+            <div class="cipher-anomaly-alert">
+                <span class="cipher-anomaly-icon">⚠️</span>
                 <div>
                     <strong>Statistical Outlier Detected:</strong> <code>{label}</code> with <strong>{fmt_val}</strong>
                     is <strong>{pct}% {direction}</strong> the median ({z:+.1f}σ robust z-score).
@@ -889,11 +889,11 @@ def render_narrative_insights(insights: list[str]) -> None:
     """Render automated, data-grounded narrative insight bullets."""
     if not insights:
         return
-    items_html = "".join([f'<div class="hugr-narrative-item"><span>✦</span><span>{item}</span></div>' for item in insights])
+    items_html = "".join([f'<div class="cipher-narrative-item"><span>✦</span><span>{item}</span></div>' for item in insights])
     st.markdown(
         f"""
-        <div class="hugr-narrative-card">
-            <div class="hugr-narrative-header">
+        <div class="cipher-narrative-card">
+            <div class="cipher-narrative-header">
                 <span>⚡ Automated Narrative Insights</span>
             </div>
             {items_html}
@@ -907,11 +907,11 @@ def render_drilldown_actions(drilldowns: list[str]) -> None:
     """Render interactive drilldown action recommendations."""
     if not drilldowns:
         return
-    chips_html = "".join([f'<span class="hugr-drilldown-chip">🔍 {d}</span>' for d in drilldowns])
+    chips_html = "".join([f'<span class="cipher-drilldown-chip">🔍 {d}</span>' for d in drilldowns])
     st.markdown(
         f"""
-        <div class="hugr-drilldown-container">
-            <span class="hugr-drilldown-label">Recommended Drilldowns:</span>
+        <div class="cipher-drilldown-container">
+            <span class="cipher-drilldown-label">Recommended Drilldowns:</span>
             {chips_html}
         </div>
         """,
@@ -930,13 +930,13 @@ def render_candidate_joins(joins: list[Any]) -> None:
         conf = getattr(j, "confidence", 1.0)
         items.append(
             f'<div style="margin: 0.45rem 0;">'
-            f'<span class="hugr-join-badge">🔗 {label}</span> '
+            f'<span class="cipher-join-badge">🔗 {label}</span> '
             f'<span style="font-size: 0.82rem; color: #94a3b8; margin-left: 0.5rem;">{reason} ({int(conf*100)}% confidence)</span>'
             f'</div>'
         )
     st.markdown(
         f"""
-        <div class="hugr-join-card">
+        <div class="cipher-join-card">
             <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase; color: #a5b4fc; margin-bottom: 0.6rem; letter-spacing: 0.04em;">
                 ✦ Discovered Cross-Dataset Relationships
             </div>
@@ -945,6 +945,7 @@ def render_candidate_joins(joins: list[Any]) -> None:
         """,
         unsafe_allow_html=True,
     )
+
 
 
 

@@ -1,5 +1,5 @@
 ================================================================================
-HUGR APPLICATION DEBUG REPORT
+CIPHER APPLICATION DEBUG REPORT
 Generated: September 7, 2026
 ================================================================================
 
@@ -21,12 +21,12 @@ Traceback (most recent call last):
     result = await app(  # type: ignore[func-returns-value]
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   [... middleware stack ...]
-  File "C:\CodeSpace\Projects\Hugr\src\dtp\api\server.py", line 426, in get_status
+  File "C:\CodeSpace\Projects\Cipher\src\dtp\api\server.py", line 426, in get_status
     initialize_default_dataset()
-  File "C:\CodeSpace\Projects\Hugr\src\dtp\api\server.py", line 78, in initialize_default_dataset
+  File "C:\CodeSpace\Projects\Cipher\src\dtp\api\server.py", line 78, in initialize_default_dataset
     wh = warehouse.Warehouse.from_df(df, name="ecommerce_orders")
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\CodeSpace\Projects\Hugr\src\dtp\warehouse.py", line 100, in from_df
+  File "C:\CodeSpace\Projects\Cipher\src\dtp\warehouse.py", line 100, in from_df
     con.execute(f"CREATE TABLE {_ident(name)} AS SELECT * FROM df")
 duckdb.duckdb.NotImplementedException: Not implemented Error: Data type 'str' not recognized
 

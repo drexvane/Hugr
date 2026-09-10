@@ -1,4 +1,4 @@
-# Hugr UI/UX Design Specification
+# Cipher UI/UX Design Specification
 
 **Status**: Authoritative UI/UX Design Specification  
 **Design Philosophy**: AI-First Data Intelligence, Minimal Restraint, Rich Polish  
@@ -28,7 +28,7 @@
 
 ### 2.1 Brand Header & Navigation
 - **Glyph**: Radiant `✦` with indigo/cyan gradient drop-shadow.
-- **Wordmark**: `Hugr` in Outfit with silver gradient.
+- **Wordmark**: `Cipher` in Outfit with silver gradient.
 - **Badge**: Pill badge `Universal AI Data Analyst`.
 - **Status Pill**: Shows active dataset name, row count, and column count with glowing green dot indicator.
 
@@ -104,7 +104,7 @@
 ### 5.1 Automated Outlier & Anomaly Detection
 - Statistical anomaly detection using median / Median Absolute Deviation (MAD) robust z-scores (`robust_z_scores`).
 - Flags significant outliers (`abs(z) >= 2.5`) on any result frame with >= 4 data points.
-- Surfaces an elegant amber alert banner (`.hugr-anomaly-alert`) reporting the outlier's value, percentage deviation from median, and sigma score.
+- Surfaces an elegant amber alert banner (`.cipher-anomaly-alert`) reporting the outlier's value, percentage deviation from median, and sigma score.
 
 ### 5.2 Segment Analysis & Concentration
 - Evaluates top and bottom segment contributions and share of total.
@@ -117,18 +117,19 @@
   - **Concentration**: Summarizes top-3 concentration whenever it accounts for >= 50% of the total.
   - **Spread**: Outlines performance ratio of leader vs group median.
   - **Statistical Outliers**: Direct narrative description of extreme points.
-- Rendered in a polished dark glass card (`.hugr-narrative-card`).
+- Rendered in a polished dark glass card (`.cipher-narrative-card`).
 
 ### 5.4 Interactive Drilldown Recommendations
 - Suggests logical next-level drilldown actions:
   - Filtering into leader and breaking down by secondary dimension (`where <dim> is '<val>' by <sub_dim>`).
   - Restricting view to top 5 groups.
   - Generating temporal trend for the leading segment.
-- Rendered as interactive pill chips (`.hugr-drilldown-chip`).
+- Rendered as interactive pill chips (`.cipher-drilldown-chip`).
 
 ---
 
 ## 6. Subsequent Phases (Roadmap Reference)
 - **Phase 5 — Export, Sharing & Multi-Dataset Synthesis**: Cross-dataset joins, PDF/HTML insight reports, and collaborative workspaces.
+
 
 

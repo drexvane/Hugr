@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HUGR ARCHITECTURAL DESIGN SYSTEM
+   CIPHER ARCHITECTURAL DESIGN SYSTEM
    Apple-level minimalism + Modern data intelligence + Interactive spatial canvas
    Palette: Clean white canvas, crisp slate geometry, restrained iris accents,
    refined soft-cornered precision (6px - 12px), zero bubbly/pill aesthetics.
@@ -1373,7 +1373,7 @@ html, body {
 }
 
 /* In-App Toast & Notice Banner */
-.hugr-toast-container {
+.cipher-toast-container {
     position: fixed;
     bottom: 2rem;
     left: 50%;
@@ -1387,7 +1387,7 @@ html, body {
     pointer-events: none;
 }
 
-.hugr-toast {
+.cipher-toast {
     pointer-events: auto;
     background: #09090b;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1399,15 +1399,15 @@ html, body {
     animation: toastSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.hugr-toast-warning {
+.cipher-toast-warning {
     border-color: rgba(245, 158, 11, 0.4);
 }
 
-.hugr-toast-error {
+.cipher-toast-error {
     border-color: rgba(239, 68, 68, 0.4);
 }
 
-.hugr-toast-info {
+.cipher-toast-info {
     border-color: rgba(37, 99, 235, 0.4);
 }
 

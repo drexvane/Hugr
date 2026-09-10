@@ -116,7 +116,7 @@ def generate_markdown_report(answer: Any, wh: Warehouse, dataset_name: str = "Da
     """Produce an executive-ready Markdown analytical summary report."""
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
-        f"# ✦ Hugr Executive Data Intelligence Report",
+        f"# ✦ Cipher Executive Data Intelligence Report",
         f"**Generated**: {now_str} | **Dataset**: {dataset_name} | **Engine**: DuckDB OLAP",
         "",
         "---",
@@ -188,7 +188,7 @@ def generate_markdown_report(answer: Any, wh: Warehouse, dataset_name: str = "Da
             "```",
             "",
             "---",
-            "*Report generated deterministically by Hugr AI Data Intelligence Engine.*",
+            "*Report generated deterministically by Cipher AI Data Intelligence Engine.*",
         ])
 
     return "\n".join(lines)
@@ -251,7 +251,7 @@ def generate_html_report(answer: Any, wh: Warehouse, dataset_name: str = "Datase
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Hugr Executive Intelligence Report - {dataset_name_clean}</title>
+<title>Cipher Executive Intelligence Report - {dataset_name_clean}</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap');
     body {{
@@ -299,7 +299,7 @@ def generate_html_report(answer: Any, wh: Warehouse, dataset_name: str = "Datase
 <body>
 <div class="container">
     <header class="header">
-        <div class="brand">✦ Hugr Intelligence Report</div>
+        <div class="brand">✦ Cipher Intelligence Report</div>
         <div class="meta">Generated {now_str} • Active Dataset: {dataset_name_clean} • DuckDB In-Memory OLAP</div>
     </header>
 
@@ -313,7 +313,7 @@ def generate_html_report(answer: Any, wh: Warehouse, dataset_name: str = "Datase
     {table_html}
 
     <footer class="footer">
-        Generated deterministically by Hugr AI Data Intelligence Engine • 100% Mathematically Verified
+        Generated deterministically by Cipher AI Data Intelligence Engine • 100% Mathematically Verified
     </footer>
 </div>
 </body>

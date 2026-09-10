@@ -1,4 +1,4 @@
-"""Automated verification suite for the Hugr FastAPI backend and web server.
+"""Automated verification suite for the Cipher FastAPI backend and web server.
 
 Tests:
 - API status & schema discovery endpoint
@@ -89,13 +89,13 @@ def test_api_export_endpoints_after_query():
     # Markdown report export
     md_res = client.get("/api/export/markdown")
     assert md_res.status_code == 200
-    assert "# ✦ Hugr Executive Data Intelligence Report" in md_res.text
+    assert "# ✦ Cipher Executive Data Intelligence Report" in md_res.text
 
     # Standalone HTML report export
     html_res = client.get("/api/export/html")
     assert html_res.status_code == 200
     assert "<!DOCTYPE html>" in html_res.text
-    assert "Hugr Intelligence Report" in html_res.text
+    assert "Cipher Intelligence Report" in html_res.text
 
     # CSV export
     csv_res = client.get("/api/export/csv")

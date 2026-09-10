@@ -1,12 +1,12 @@
-# Hugr Decision Logs & Architecture Evolution
+# Cipher Decision Logs & Architecture Evolution
 
-This document tracks all key technical decisions, trade-offs, and changes made during the evolution of the Hugr platform.
+This document tracks all key technical decisions, trade-offs, and changes made during the evolution of the Cipher platform.
 
 ---
 
 ## Log Entry 001: Transition from Vertical Supply-Chain to Dataset-Agnostic Backend
 - **Date**: 2026-09-06
-- **Context**: Hugr was initially crafted for the DataCo Smart Supply Chain dataset with static metric registrations (`revenue`, `profit`, `on_time_rate`) and fixed dimension definitions (`market`, `department`, `shipping_mode`). The goal is to make the backend universal across arbitrary datasets (HR, E-commerce, Education, Healthcare, Urban Planning, Finance).
+- **Context**: Cipher was initially crafted for the DataCo Smart Supply Chain dataset with static metric registrations (`revenue`, `profit`, `on_time_rate`) and fixed dimension definitions (`market`, `department`, `shipping_mode`). The goal is to make the backend universal across arbitrary datasets (HR, E-commerce, Education, Healthcare, Urban Planning, Finance).
 - **Decisions**:
   1. **Dynamic Schema Discovery**: Implement automated column classification (`schema_discovery.py`) inspecting cardinality, patterns, and dtypes to classify columns into:
      - Numeric Measures
@@ -70,14 +70,14 @@ This document tracks all key technical decisions, trade-offs, and changes made d
 
 ## Log Entry 004: Phase 1 — Initial Experience Implementation
 - **Date**: 2026-09-06
-- **Context**: Implement Phase 1 of the Hugr user experience as defined in `docs/UI_DESIGN_SPEC.md`: strong AI-first starting interaction, question input, CSV/XLSX ingestion entry point, branding, and polished intentional composition that does not feel empty or cluttered.
+- **Context**: Implement Phase 1 of the Cipher user experience as defined in `docs/UI_DESIGN_SPEC.md`: strong AI-first starting interaction, question input, CSV/XLSX ingestion entry point, branding, and polished intentional composition that does not feel empty or cluttered.
 - **Decisions & Implementation**:
   1. **Authoritative UI/UX Design Specification (`docs/UI_DESIGN_SPEC.md` & `UI.md`)**:
      - Formulated explicit design tokens: `#090d16` canvas background, glassmorphism (`rgba(15, 23, 42, 0.65)` with backdrop blur), primary accent gradient (indigo `#6366f1` -> purple `#a855f7` -> cyan `#06b6d4`), and typography (`Outfit` for display/headings, `Inter` for body).
      - Strict adherence to core constraint: Real data only; no fake or hardcoded analytical numbers.
   2. **Modular Style & Component Architecture (`src/dtp/dashboard/style.py`)**:
      - `inject_custom_css()`: Injects custom CSS rules for dark canvas, glow accents, glassmorphic cards, and responsive grids.
-     - `render_brand_header()`: Top brand identity with glowing glyph `✦`, wordmark `Hugr`, and `Universal AI Data Analyst` pill.
+     - `render_brand_header()`: Top brand identity with glowing glyph `✦`, wordmark `Cipher`, and `Universal AI Data Analyst` pill.
      - `render_dataset_pill()`: Live indicator pill displaying active dataset name, row count, and column count with glowing status dot.
      - `render_hero_intro()`: Centered typographic hero inviting natural language queries.
      - `render_initial_cards()`: 3 capability cards (Ask Naturally, Dynamic Discovery, Hallucination Guard) providing a balanced, intentional initial state that never feels barren.
@@ -196,7 +196,7 @@ This document tracks all key technical decisions, trade-offs, and changes made d
 - **Decisions & Implementation**:
   1. **Resilient Sidebar Fallback (`dashboard/app.py`)**:
      - When `V.snapshot_ids()` returns empty, the app transitions seamlessly into Universal Ingestion Mode instead of halting.
-     - Sidebar renders `"Hugr Analytics"` branding, `"✦ Universal AI Data Analyst"` caption, and defaults navigation to `ASK` view.
+     - Sidebar renders `"Cipher Analytics"` branding, `"✦ Universal AI Data Analyst"` caption, and defaults navigation to `ASK` view.
      - Preserves existing snapshot picker and multi-view navigation when offline snapshots are present.
   2. **In-Memory Sample Warehouse Fallback (`_sample_warehouse`)**:
      - If no user file has been uploaded yet and no snapshot exists, loads `data/sample_datasets/ecommerce_orders.csv` via `Warehouse.from_df()` into DuckDB.

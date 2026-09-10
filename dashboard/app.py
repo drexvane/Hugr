@@ -45,7 +45,7 @@ from dtp import ingest                                        # noqa: E402
 from dtp import drilldown                                     # noqa: E402
 from dtp import export                                        # noqa: E402
 
-st.set_page_config(page_title="Hugr — AI Data Analyst", page_icon="\u2726",
+st.set_page_config(page_title="Cipher — AI Data Analyst", page_icon="\u2726",
                    layout="wide")
 style.inject_custom_css()
 
@@ -100,7 +100,7 @@ def _sidebar() -> tuple[str, M.Filters, int, str]:
     """The controls, and the four things the views need from them."""
     ids = V.snapshot_ids()
     if not ids:
-        st.sidebar.title("Hugr Analytics")
+        st.sidebar.title("Cipher Analytics")
         st.sidebar.caption("✦ Universal AI Data Analyst")
         st.sidebar.info("Universal Ingestion mode active. Upload any CSV or Excel file to analyze, or ask questions on sample data.")
         view = st.sidebar.radio("View", [ASK], format_func=lambda k: ASK_TITLE)
@@ -351,8 +351,8 @@ def _ask_screen(wh, version_id: str) -> None:
         "Upload CSV or Excel dataset",
         type=["csv", "xlsx", "xls"],
         accept_multiple_files=True,
-        help="Upload one or multiple tabular CSV or Excel datasets to explore immediately. Hugr auto-discovers columns, metrics, dimensions, and relationships.",
-        key="hugr_uploader",
+        help="Upload one or multiple tabular CSV or Excel datasets to explore immediately. Cipher auto-discovers columns, metrics, dimensions, and relationships.",
+        key="cipher_uploader",
     )
     if uploaded_files:
         files_hash = "_".join(f"{f.name}_{f.size}" for f in uploaded_files)

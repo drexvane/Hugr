@@ -1,5 +1,5 @@
 /**
- * Hugr Constellation Studio & Balanced Spatial Grid Controller
+ * Cipher Constellation Studio & Balanced Spatial Grid Controller
  * Recreates the exact reference design with celestial star constellation,
  * slow staggered card entrances, and verified DuckDB numbers.
  */
@@ -380,16 +380,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // In-App Toast & Dynamic Query Guidance
     function showNotification(message, type = 'warning', suggestions = []) {
-        let container = document.getElementById('hugr-toast-container');
+        let container = document.getElementById('cipher-toast-container');
         if (!container) {
             container = document.createElement('div');
-            container.id = 'hugr-toast-container';
-            container.className = 'hugr-toast-container';
+            container.id = 'cipher-toast-container';
+            container.className = 'cipher-toast-container';
             document.body.appendChild(container);
         }
 
         const toast = document.createElement('div');
-        toast.className = `hugr-toast hugr-toast-${type}`;
+        toast.className = `cipher-toast cipher-toast-${type}`;
 
         let html = `<div class="toast-header"><span class="toast-icon">✦</span><span class="toast-msg">${escapeHtml(message)}</span><button type="button" class="toast-close">&times;</button></div>`;
         if (suggestions && suggestions.length > 0) {
