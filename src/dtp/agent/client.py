@@ -382,6 +382,16 @@ def _needles(registry: dict[str, Any]) -> list[tuple[str, str]]:
             phrases.update({"item", "items", "product", "products", "item name", "product name"})
         if any(w in k_lower for w in ("choice", "category", "type")):
             phrases.update({"category", "categories", "description", "choice", "options", "type", "types"})
+        if any(w in k_lower for w in ("failed", "login", "auth")):
+            phrases.update({"failed logins", "failed login attempts", "login attempts", "failed attempts", "logins", "auth failures", "login failures", "failed login"})
+        if any(w in k_lower for w in ("threat", "attack", "anomaly")):
+            phrases.update({"threat", "threats", "threat category", "attacks", "attack type", "attack category", "security events", "threat types"})
+        if any(w in k_lower for w in ("risk", "score")):
+            phrases.update({"risk", "risk score", "threat score", "average risk", "total risk", "risk scores"})
+        if any(w in k_lower for w in ("byte", "transfer", "egress", "traffic")):
+            phrases.update({"bytes", "bytes transferred", "egress", "traffic", "data transfer", "egress bytes", "outbound traffic"})
+        if any(w in k_lower for w in ("department", "dept", "team")):
+            phrases.update({"department", "departments", "dept", "depts", "team", "teams", "unit"})
 
         pairs += [(phrase, key) for phrase in phrases]
     return sorted(pairs, key=lambda p: -len(p[0]))

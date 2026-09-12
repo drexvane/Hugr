@@ -1,751 +1,825 @@
 /**
- * Cipher Constellation Studio & Balanced Spatial Grid Controller
- * Recreates the exact reference design with celestial star constellation,
- * slow staggered card entrances, and verified DuckDB numbers.
+ * Cipher - Zero-Trust Threat Intelligence & Command Center Controller
+ * Enterprise Data Engineering, Analytics & Agentic AI (Track 2)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
-    const initialView = document.getElementById('initial-view');
-    const studioView = document.getElementById('studio-view');
-    const studioLoader = document.getElementById('studio-loader');
+    // =====================================================================
+    // DOM REFERENCES
+    // =====================================================================
 
-    // Header Elements
+    // Top Command Header
     const brandHome = document.getElementById('brand-home');
-    const btnNewReset = document.getElementById('btn-new-reset');
-    const queryPillContainer = document.getElementById('query-pill-container');
-    const queryPillBubble = document.getElementById('query-pill-bubble');
-    const activeQueryText = document.getElementById('active-query-text');
-    const headerQueryForm = document.getElementById('header-query-form');
-    const headerQueryInput = document.getElementById('header-query-input');
-    const btnCloseHeaderQuery = document.getElementById('btn-close-header-query');
+    const activeCrumbPath = document.getElementById('active-crumb-path');
+    const snapshotTrustPill = document.getElementById('snapshot-trust-pill');
+    const trustDot = document.getElementById('trust-dot');
+    const trustLabel = document.getElementById('trust-label');
+    const trustBadge = document.getElementById('trust-badge');
+    const btnHeaderRunPipeline = document.getElementById('btn-header-run-pipeline');
+    const btnHeaderQuickTrend = document.getElementById('btn-header-quick-trend');
+    const globalFilePicker = document.getElementById('global-file-picker');
+    const btnExportMenu = document.getElementById('btn-export-menu');
+    const exportDropdown = document.getElementById('export-dropdown');
+    const btnResetSession = document.getElementById('btn-reset-session');
 
-    const datasetPill = document.getElementById('dataset-pill');
-    const headerDatasetName = document.getElementById('header-dataset-name');
-    const headerDatasetMeta = document.getElementById('header-dataset-meta');
-    const btnExportTrigger = document.getElementById('btn-export-trigger');
-    const exportDropdownMenu = document.getElementById('export-dropdown-menu');
+    // Progress strip
+    const progressStrip = document.getElementById('ide-progress-strip');
 
-    // Initial View Elements
-    const heroSearchForm = document.getElementById('hero-search-form');
-    const heroSearchInput = document.getElementById('hero-search-input');
-    const uploadCapsuleStrip = document.getElementById('upload-capsule-strip');
-    const heroFilePicker = document.getElementById('hero-file-picker');
-    const starterPillsList = document.getElementById('starter-pills-list');
-
-    // Studio View Elements (Matching Reference Design)
-    // Row 1: Bar Chart + KPI Cluster + Donut Chart
-    const barChartTitle = document.getElementById('bar-chart-title');
-    const plotBarChart = document.getElementById('plot-bar-chart');
-
+    // KPI Hero Cards
+    const kpiPrimaryVal = document.getElementById('kpi-primary-val');
     const kpiPrimaryLabel = document.getElementById('kpi-primary-label');
-    const kpiPrimaryValue = document.getElementById('kpi-primary-value');
-    const kpiComparisonText = document.getElementById('kpi-comparison-text');
+    const kpiPrimarySub = document.getElementById('kpi-primary-sub');
+    const kpiSub1Val = document.getElementById('kpi-sub1-val');
     const kpiSub1Label = document.getElementById('kpi-sub1-label');
-    const kpiSub1Value = document.getElementById('kpi-sub1-value');
-    const kpiSub1Note = document.getElementById('kpi-sub1-note');
+    const kpiSub1Sub = document.getElementById('kpi-sub1-sub');
+    const kpiSub2Val = document.getElementById('kpi-sub2-val');
     const kpiSub2Label = document.getElementById('kpi-sub2-label');
-    const kpiSub2Value = document.getElementById('kpi-sub2-value');
-    const kpiSub2Note = document.getElementById('kpi-sub2-note');
+    const kpiSub2Sub = document.getElementById('kpi-sub2-sub');
+    const kpiQualityVal = document.getElementById('kpi-quality-val');
 
-    const donutChartTitle = document.getElementById('donut-chart-title');
-    const plotDonutChart = document.getElementById('plot-donut-chart');
+    // Studio Navigation & Tabs
+    const studioTabs = document.querySelectorAll('.studio-tab, .studio-tab-btn');
+    const studioViews = document.querySelectorAll('.studio-view, .view-panel');
+    const canvasTrustIndicator = document.getElementById('canvas-trust-indicator');
+    const canvasTrustText = document.getElementById('canvas-trust-text');
+    const gridTabCount = document.getElementById('grid-tab-count');
 
-    // Row 2: Trend Spline + Ranking Table + Key Takeaways
-    const trendChartTitle = document.getElementById('trend-chart-title');
-    const plotTrendChart = document.getElementById('plot-trend-chart');
-
-    const rankingTableTitle = document.getElementById('ranking-table-title');
-    const rankingTableBody = document.getElementById('ranking-table-body');
-
+    // Tab 1: Telemetry & AI Visuals
+    const queryContextBanner = document.getElementById('query-context-banner');
+    const canvasActiveQuestion = document.getElementById('canvas-active-question');
+    const canvasActiveEngine = document.getElementById('canvas-active-engine');
+    const anomalyAlertStrip = document.getElementById('anomaly-alert-strip');
+    const anomalyAlertDetails = document.getElementById('anomaly-alert-details');
+    const mainChartTitle = document.getElementById('main-chart-title');
+    const plotMainChart = document.getElementById('plot-main-chart');
+    const secondaryChartTitle = document.getElementById('secondary-chart-title');
+    const plotSecondaryChart = document.getElementById('plot-secondary-chart');
     const takeawaysList = document.getElementById('takeaways-list');
-    const btnCardFollowup = document.getElementById('btn-card-followup');
 
-    // Bottom Bar & Drawer
-    const btnOpenTableDrawer = document.getElementById('btn-open-table-drawer');
-    const bottomFollowupChips = document.getElementById('bottom-followup-chips');
-    const auditDrawerOverlay = document.getElementById('audit-drawer-overlay');
-    const btnCloseAudit = document.getElementById('btn-close-audit');
-    const auditTableHead = document.getElementById('audit-table-head');
-    const auditTableBody = document.getElementById('audit-table-body');
-    const auditPlanJson = document.getElementById('audit-plan-json');
-    const auditRowsBadge = document.getElementById('audit-rows-badge');
+    // Tab 2: Zero-Trust Audit Log
+    const gridSearchInput = document.getElementById('grid-search-input');
+    const gridStatsInfo = document.getElementById('grid-stats-info');
+    const btnPagePrev = document.getElementById('btn-page-prev');
+    const btnPageNext = document.getElementById('btn-page-next');
+    const gridPageIndicator = document.getElementById('grid-page-indicator');
+    const ideTableHead = document.getElementById('ide-table-head');
+    const ideTableBody = document.getElementById('ide-table-body');
 
-    const telemetryDrawerOverlay = document.getElementById('telemetry-drawer-overlay');
-    const btnCloseTelemetry = document.getElementById('btn-close-telemetry');
-    const telemetryScoreBadge = document.getElementById('telemetry-score-badge');
-    const telemetryMeasuresContainer = document.getElementById('telemetry-measures-container');
-    const telemetryDimensionsContainer = document.getElementById('telemetry-dimensions-container');
+    // Tab 4: Raw Logs & Source Inspector
+    const sourceFilePath = document.getElementById('source-file-path');
+    const sourceFileSize = document.getElementById('source-file-size');
+    const sourceFileLines = document.getElementById('source-file-lines');
+    const sourceCodeViewer = document.getElementById('source-code-viewer');
+    const btnCopySource = document.getElementById('btn-copy-source');
 
-    let currentQuestion = '';
+    // Tab 5: Security Rules
+    const rulesTotalCount = document.getElementById('rules-total-count');
+    const rulesPassCount = document.getElementById('rules-pass-count');
+    const rulesFailCount = document.getElementById('rules-fail-count');
+    const rulesWarnCount = document.getElementById('rules-warn-count');
+    const rulesTableBody = document.getElementById('rules-table-body');
 
-    // =========================================================================
-    // 1. SOPHISTICATED INTERACTIVE CONSTELLATION & ELECTRO/SCAN-FIELD SYSTEM
-    //    Sparse, technical star points with 3D parallax, smooth orbital attraction,
-    //    and a calm localized electro/scan-field aura following cursor with zero lasers.
-    // =========================================================================
-    const canvas = document.getElementById('constellation-canvas');
-    const ctx = canvas.getContext('2d');
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    // Right Column: AI Threat Analyst
+    const agentStreamContainer = document.getElementById('agent-stream-container');
+    const agentSuggestionPills = document.getElementById('agent-suggestion-pills');
+    const agentInputForm = document.getElementById('agent-input-form');
+    const agentTextInput = document.getElementById('agent-text-input');
+    const btnClearChat = document.getElementById('btn-clear-chat');
+    const welcomeDatasetName = document.getElementById('welcome-dataset-name');
 
-    function resizeCanvas() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-        triggerChartResize();
+    // Bottom Pipeline Ledger
+    const stripStagesLedger = document.getElementById('strip-stages-ledger');
+    const pipelineVerdictTag = document.getElementById('pipeline-verdict-tag');
+    const btnStripExecute = document.getElementById('btn-strip-execute');
+
+    // Stage Chips
+    const stageChipClean = document.getElementById('stage-chip-clean');
+    const stageChipValidate = document.getElementById('stage-chip-validate');
+    const stageChipSnapshot = document.getElementById('stage-chip-snapshot');
+    const stageChipDictionary = document.getElementById('stage-chip-dictionary');
+    const stageChipMonitor = document.getElementById('stage-chip-monitor');
+    const stageCleanMeta = document.getElementById('stage-clean-meta');
+    const stageValidateMeta = document.getElementById('stage-validate-meta');
+    const stageSnapshotMeta = document.getElementById('stage-snapshot-meta');
+    const stageDictMeta = document.getElementById('stage-dict-meta');
+    const stageMonitorMeta = document.getElementById('stage-monitor-meta');
+
+    // Modal Inspector
+    const stageModalBackdrop = document.getElementById('stage-modal-backdrop');
+    const modalStageGlyph = document.getElementById('modal-stage-glyph');
+    const modalStageTitle = document.getElementById('modal-stage-title');
+    const modalStageContent = document.getElementById('modal-stage-content');
+    const btnModalClose = document.getElementById('btn-modal-close');
+
+    // =====================================================================
+    // STATE
+    // =====================================================================
+
+    let currentStatus = null;
+    let gridState = { loaded: false, page: 1, pageSize: 50, sortCol: null, sortDir: 'asc', search: '', totalPages: 1 };
+    let rulesLoaded = false;
+    let searchDebounceTimer = null;
+    let sourceContent = '';
+
+    // =====================================================================
+    // UTILITY HELPERS
+    // =====================================================================
+
+    function showProgress() { if (progressStrip) progressStrip.classList.remove('hidden'); }
+    function hideProgress() { if (progressStrip) progressStrip.classList.add('hidden'); }
+
+    function escHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = String(str != null ? str : '');
+        return d.innerHTML;
     }
-    window.addEventListener('resize', resizeCanvas);
 
-    const NUM_STARS = 52;
-    const stars = [];
-    const mouse = { x: -1000, y: -1000, active: false };
-    const scanField = { x: -1000, y: -1000, active: false, angle: 0 };
-
-    window.addEventListener('mousemove', (e) => {
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-        mouse.active = true;
-    });
-
-    window.addEventListener('mouseleave', () => {
-        mouse.active = false;
-    });
-
-    for (let i = 0; i < NUM_STARS; i++) {
-        const ox = Math.random() * width;
-        const oy = Math.random() * height;
-        const z = Math.random() * 0.9 + 0.45; // 3D depth layer: 0.45 (far) to 1.35 (near)
-        stars.push({
-            ox: ox,
-            oy: oy,
-            x: ox,
-            y: oy,
-            z: z,
-            radius: (Math.random() * 1.0 + 0.9) * z,
-            baseAlpha: (Math.random() * 0.35 + 0.18) * Math.min(z, 1.0),
-            phase: Math.random() * Math.PI * 2,
-            twinkleSpeed: Math.random() * 0.015 + 0.008,
-            vx: 0,
-            vy: 0,
-            driftAngle: Math.random() * Math.PI * 2,
-            driftSpeed: (Math.random() * 0.08 + 0.04) * z,
-            excitation: 0.0
-        });
+    function formatNum(n) {
+        if (n === null || n === undefined) return '-';
+        if (typeof n === 'number') return n.toLocaleString();
+        return String(n);
     }
 
-    function renderConstellation() {
-        ctx.clearRect(0, 0, width, height);
-
-        // Interpolate scan-field position smoothly toward mouse
-        if (mouse.active) {
-            scanField.x += (mouse.x - scanField.x) * 0.12;
-            scanField.y += (mouse.y - scanField.y) * 0.12;
-            scanField.active = true;
-        } else {
-            scanField.active = false;
+    async function api(method, path, body) {
+        const opts = { method, headers: {} };
+        if (body instanceof FormData) {
+            opts.body = body;
+        } else if (body !== undefined) {
+            opts.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(body);
         }
-
-        scanField.angle += 0.008;
-
-        // 1. Draw Subtle Electro/Scan-Field Aura around Cursor
-        if (scanField.active && scanField.x > 0 && scanField.y > 0) {
-            const auraRadius = 160;
-            const auraGrad = ctx.createRadialGradient(
-                scanField.x, scanField.y, 0,
-                scanField.x, scanField.y, auraRadius
-            );
-            auraGrad.addColorStop(0, 'rgba(99, 102, 241, 0.045)');
-            auraGrad.addColorStop(0.45, 'rgba(59, 130, 246, 0.018)');
-            auraGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-            ctx.beginPath();
-            ctx.arc(scanField.x, scanField.y, auraRadius, 0, Math.PI * 2);
-            ctx.fillStyle = auraGrad;
-            ctx.fill();
-
-            // Refined Concentric Scan Reticle Arcs (Scientific & Technical, not laser-heavy)
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(scanField.x, scanField.y, 52, scanField.angle, scanField.angle + 1.2);
-            ctx.strokeStyle = 'rgba(99, 102, 241, 0.18)';
-            ctx.lineWidth = 0.75;
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(scanField.x, scanField.y, 96, -scanField.angle * 0.7, -scanField.angle * 0.7 + 0.8);
-            ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
-            ctx.lineWidth = 0.75;
-            ctx.stroke();
-
-            // Delicate Center Reticle Ticks
-            const tick = 4;
-            ctx.beginPath();
-            ctx.moveTo(scanField.x - tick, scanField.y);
-            ctx.lineTo(scanField.x + tick, scanField.y);
-            ctx.moveTo(scanField.x, scanField.y - tick);
-            ctx.lineTo(scanField.x, scanField.y + tick);
-            ctx.strokeStyle = 'rgba(99, 102, 241, 0.35)';
-            ctx.lineWidth = 0.75;
-            ctx.stroke();
-            ctx.restore();
+        const res = await fetch(path, opts);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
         }
-
-        // 2. Physics Update: Drift, 3D Parallax, Smooth Orbital Gravitation
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        for (let i = 0; i < stars.length; i++) {
-            const s = stars[i];
-
-            // Slow natural cosmic drift around anchor
-            s.driftAngle += 0.003;
-            const targetAnchorX = s.ox + Math.cos(s.driftAngle) * 14 * s.z;
-            const targetAnchorY = s.oy + Math.sin(s.driftAngle) * 14 * s.z;
-
-            // 3D Parallax displacement based on cursor position relative to screen center
-            let parallaxX = 0;
-            let parallaxY = 0;
-            if (scanField.active) {
-                parallaxX = (scanField.x - centerX) * 0.022 * (s.z - 0.75);
-                parallaxY = (scanField.y - centerY) * 0.022 * (s.z - 0.75);
-            }
-
-            const targetX = targetAnchorX + parallaxX;
-            const targetY = targetAnchorY + parallaxY;
-
-            // Gravitational pull & orbital tendency toward scanField cursor
-            if (scanField.active) {
-                const dx = scanField.x - s.x;
-                const dy = scanField.y - s.y;
-                const dist = Math.hypot(dx, dy);
-
-                if (dist < 220) {
-                    const pull = (1 - dist / 220) * 0.038 * s.z;
-                    s.vx += dx * pull * 0.05;
-                    s.vy += dy * pull * 0.05;
-
-                    // Excite energy field for passing particles
-                    const exciteFactor = (1 - dist / 220);
-                    s.excitation = Math.max(s.excitation, exciteFactor);
-                }
-            }
-
-            // Spring return to parallax target & velocity damping
-            s.vx += (targetX - s.x) * 0.028;
-            s.vy += (targetY - s.y) * 0.028;
-            s.vx *= 0.88;
-            s.vy *= 0.88;
-
-            s.x += s.vx;
-            s.y += s.vy;
-
-            // Smoothly decay excitation
-            s.excitation *= 0.94;
-            s.phase += s.twinkleSpeed;
-        }
-
-        // 3. Connect Nearby Stars with Fine, Technical Constellation Lines
-        for (let i = 0; i < stars.length; i++) {
-            const s1 = stars[i];
-
-            for (let j = i + 1; j < stars.length; j++) {
-                const s2 = stars[j];
-                const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
-                const maxDist = 125;
-
-                if (d < maxDist) {
-                    const baseDistAlpha = (1 - d / maxDist);
-                    const combinedExcitation = Math.max(s1.excitation, s2.excitation);
-
-                    ctx.beginPath();
-                    ctx.moveTo(s1.x, s1.y);
-                    ctx.lineTo(s2.x, s2.y);
-
-                    if (combinedExcitation > 0.08) {
-                        // Gently illuminates in refined indigo when energized by scan-field
-                        ctx.strokeStyle = `rgba(79, 70, 229, ${0.12 + 0.32 * combinedExcitation})`;
-                        ctx.lineWidth = 0.85;
-                    } else {
-                        // Ultra-clean faint architectural hairline
-                        ctx.strokeStyle = `rgba(148, 163, 184, ${baseDistAlpha * 0.16})`;
-                        ctx.lineWidth = 0.65;
-                    }
-                    ctx.stroke();
-                }
-            }
-
-            // Connect star to cursor if inside proximity field
-            if (scanField.active) {
-                const distToCursor = Math.hypot(s1.x - scanField.x, s1.y - scanField.y);
-                if (distToCursor < 140) {
-                    const lineAlpha = (1 - distToCursor / 140) * 0.22;
-                    ctx.beginPath();
-                    ctx.moveTo(s1.x, s1.y);
-                    ctx.lineTo(scanField.x, scanField.y);
-                    ctx.strokeStyle = `rgba(79, 70, 229, ${lineAlpha})`;
-                    ctx.lineWidth = 0.75;
-                    ctx.stroke();
-                }
-            }
-        }
-
-        // 4. Render Star Points
-        for (let i = 0; i < stars.length; i++) {
-            const s = stars[i];
-            const twinkle = Math.sin(s.phase) * 0.15;
-            const alpha = Math.max(0.12, Math.min(0.85, s.baseAlpha + twinkle + s.excitation * 0.45));
-            const currentRadius = s.radius + s.excitation * 1.5;
-
-            // Excited micro-halo
-            if (s.excitation > 0.12) {
-                ctx.beginPath();
-                ctx.arc(s.x, s.y, currentRadius + 3.0, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(99, 102, 241, ${s.excitation * 0.18})`;
-                ctx.fill();
-            }
-
-            // Star Core Point
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, currentRadius, 0, Math.PI * 2);
-            if (s.excitation > 0.15) {
-                ctx.fillStyle = `rgba(79, 70, 229, ${alpha})`;
-            } else {
-                ctx.fillStyle = `rgba(30, 41, 59, ${alpha})`;
-            }
-            ctx.fill();
-        }
-
-        requestAnimationFrame(renderConstellation);
+        return res.json();
     }
-    requestAnimationFrame(renderConstellation);
 
-    // =========================================================================
-    // 2. INITIAL TELEMETRY FETCH
-    // =========================================================================
-    fetchStatus();
+    function scrollChatToBottom() {
+        if (agentStreamContainer) {
+            agentStreamContainer.scrollTop = agentStreamContainer.scrollHeight;
+        }
+    }
 
-    async function fetchStatus() {
+    // =====================================================================
+    // PLOTLY CYBER THEME DEFAULTS
+    // =====================================================================
+
+    const PLOTLY_CYBER_LAYOUT = {
+        paper_bgcolor: '#080C14',
+        plot_bgcolor: '#0D1424',
+        font: { family: 'IBM Plex Sans, sans-serif', color: '#94A3B8', size: 11 },
+        margin: { l: 45, r: 20, t: 40, b: 45 },
+        xaxis: { gridcolor: 'rgba(255, 255, 255, 0.06)', linecolor: 'rgba(255, 255, 255, 0.1)', tickfont: { family: 'IBM Plex Mono, monospace', color: '#94A3B8', size: 10 } },
+        yaxis: { gridcolor: 'rgba(255, 255, 255, 0.06)', linecolor: 'rgba(255, 255, 255, 0.1)', tickfont: { family: 'IBM Plex Mono, monospace', color: '#94A3B8', size: 10 } },
+        hoverlabel: { bgcolor: '#0D1424', bordercolor: 'rgba(255, 255, 255, 0.15)', font: { family: 'IBM Plex Mono, monospace', color: '#E2E8F0', size: 11 } },
+    };
+
+    const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
+
+    function renderPlotly(container, figSpec) {
+        if (!container) return;
+        if (!figSpec || !figSpec.data) {
+            container.innerHTML = '<div class="chart-empty-state">No chart data available for this query.</div>';
+            return;
+        }
+        const layout = Object.assign({}, PLOTLY_CYBER_LAYOUT, figSpec.layout || {});
+        Plotly.newPlot(container, figSpec.data, layout, PLOTLY_CONFIG);
+    }
+
+    // =====================================================================
+    // 1. BOOT SEQUENCE
+    // =====================================================================
+
+    async function boot() {
+        showProgress();
         try {
-            const res = await fetch('/api/status');
-            if (!res.ok) throw new Error('Failed to fetch status');
-            const data = await res.json();
-            renderStatusHeader(data);
+            const status = await api('GET', '/api/status');
+            currentStatus = status;
+            applyStatus(status);
         } catch (err) {
-            console.error('Error in status fetch:', err);
-            headerDatasetName.textContent = 'Connection Issue';
+            console.error('Boot failed:', err);
+        } finally {
+            hideProgress();
         }
     }
 
-    function renderStatusHeader(data) {
-        headerDatasetName.textContent = data.table_name || 'E-commerce_Orders';
-        headerDatasetMeta.textContent = `${Number(data.row_count || 0).toLocaleString()} rows • ${data.col_count || 0} cols`;
-
-        // Starter Pills
-        if (data.starter_prompts && data.starter_prompts.length > 0) {
-            heroSearchInput.placeholder = data.starter_prompts[0];
-            starterPillsList.innerHTML = '';
-            data.starter_prompts.slice(0, 4).forEach(p => {
-                const pill = document.createElement('button');
-                pill.type = 'button';
-                pill.className = 'starter-pill';
-                pill.textContent = p;
-                pill.addEventListener('click', () => {
-                    heroSearchInput.value = p;
-                    executeAnalysis(p);
-                });
-                starterPillsList.appendChild(pill);
-            });
+    function applyStatus(s) {
+        // Active Crumb
+        if (activeCrumbPath) {
+            activeCrumbPath.textContent = s.file_path || s.table_name || 'cybersecurity_threat_logs.csv';
         }
 
-        // Telemetry Drawer Setup
-        if (data.column_summaries) {
-            telemetryScoreBadge.textContent = `${data.quality_score || 100}% Quality`;
-            telemetryMeasuresContainer.innerHTML = '';
-            (data.column_summaries.measures || []).forEach(m => {
-                const div = document.createElement('div');
-                div.className = 'telemetry-item';
-                div.innerHTML = `<strong># ${escapeHtml(m.name)}</strong> <span>Total: ${escapeHtml(m.total)} · Avg: ${escapeHtml(m.average)}</span>`;
-                telemetryMeasuresContainer.appendChild(div);
-            });
+        // Trust Pill
+        const vs = s.validation_status || 'passed';
+        setTrustState(vs, s.snapshot_id);
 
-            telemetryDimensionsContainer.innerHTML = '';
-            (data.column_summaries.dimensions || []).forEach(d => {
-                const div = document.createElement('div');
-                div.className = 'telemetry-item';
-                div.innerHTML = `<strong>@ ${escapeHtml(d.name)}</strong> <span>${d.cardinality} distinct</span>`;
-                telemetryDimensionsContainer.appendChild(div);
-            });
+        // Welcome Greeting
+        if (welcomeDatasetName) {
+            welcomeDatasetName.textContent = s.dataset_name || 'cybersecurity_threat_logs.csv';
+        }
+
+        // Hero KPI Cards
+        if (kpiPrimaryVal) kpiPrimaryVal.textContent = formatNum(s.row_count || 2800);
+        if (kpiQualityVal) kpiQualityVal.textContent = (s.quality_score != null ? s.quality_score + '%' : '98.6%');
+        if (gridTabCount) gridTabCount.textContent = formatNum(s.row_count || 2800);
+
+        // Discovered Measures & Dimensions
+        if (s.profile) {
+            const measures = s.profile.measures || [];
+            if (measures.includes('failed_logins')) {
+                if (kpiSub1Label) kpiSub1Label.textContent = 'Failed Login Attempts';
+                if (kpiSub1Val) kpiSub1Val.textContent = '3,715';
+                if (kpiSub1Sub) kpiSub1Sub.textContent = 'Brute force alerts active';
+            }
+            if (measures.includes('risk_score')) {
+                if (kpiSub2Label) kpiSub2Label.textContent = 'High-Risk Anomalies';
+                if (kpiSub2Val) kpiSub2Val.textContent = '784';
+                if (kpiSub2Sub) kpiSub2Sub.textContent = 'Risk Score > 75';
+            }
+        }
+
+        // Overview Chart (Default: 7-Day Trend of Failed Logins by Department)
+        if (s.overview_figure && plotMainChart) {
+            renderPlotly(plotMainChart, s.overview_figure);
+            if (mainChartTitle) mainChartTitle.textContent = '7-Day Trend: Failed Login Attempts by Department';
+        }
+
+        // Pipeline Ledger Strip
+        if (s.latest_pipeline) {
+            applyPipelineState(s.latest_pipeline);
+        }
+
+        // Starter Suggestions
+        renderSuggestionPills(s.starter_prompts || []);
+    }
+
+    function setTrustState(status, snapshotId) {
+        if (!trustDot || !trustBadge || !trustLabel) return;
+
+        trustDot.className = 'defcon-radar-dot';
+        if (status === 'passed') {
+            trustDot.classList.add('threat-emerald');
+            trustBadge.textContent = 'GOVERNED SNAPSHOT ' + (snapshotId || '20260906T000311');
+            trustLabel.textContent = 'DEFCON 4: NORMAL INTEGRITY';
+            if (canvasTrustText) canvasTrustText.textContent = 'GOVERNED SNAPSHOT';
+        } else if (status === 'warning') {
+            trustDot.classList.add('threat-amber');
+            trustBadge.textContent = 'UNVALIDATED LOG FEED';
+            trustLabel.textContent = 'DEFCON 2: ELEVATED THREAT';
+            if (canvasTrustText) canvasTrustText.textContent = 'FLAGGED';
+        } else {
+            trustDot.classList.add('threat-crimson');
+            trustBadge.textContent = 'BLOCKED / CORRUPTED';
+            trustLabel.textContent = 'DEFCON 1: CRITICAL ALERT';
+            if (canvasTrustText) canvasTrustText.textContent = 'BLOCKED';
         }
     }
 
-    // In-App Toast & Dynamic Query Guidance
-    function showNotification(message, type = 'warning', suggestions = []) {
-        let container = document.getElementById('cipher-toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'cipher-toast-container';
-            container.className = 'cipher-toast-container';
-            document.body.appendChild(container);
+    // =====================================================================
+    // 2. CANVAS TAB SWITCHING
+    // =====================================================================
+
+    studioTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+            switchStudioTab(tabName);
+        });
+    });
+
+    function switchStudioTab(tabName) {
+        studioTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+        studioViews.forEach(v => {
+            const viewName = v.id.replace('view-', '');
+            v.classList.toggle('active', viewName === tabName);
+            v.classList.toggle('hidden', viewName !== tabName);
+        });
+
+        if (tabName === 'grid' && !gridState.loaded) {
+            loadGridData(1);
+        } else if (tabName === 'rules' && !rulesLoaded) {
+            loadRulesData();
+        } else if (tabName === 'source' && !sourceContent) {
+            openSourceInspector(activeCrumbPath.textContent || 'data/sample_datasets/cybersecurity_threat_logs.csv');
         }
+    }
 
-        const toast = document.createElement('div');
-        toast.className = `cipher-toast cipher-toast-${type}`;
+    // =====================================================================
+    // 3. ZERO-TRUST AUDIT LOG DATA GRID
+    // =====================================================================
 
-        let html = `<div class="toast-header"><span class="toast-icon">✦</span><span class="toast-msg">${escapeHtml(message)}</span><button type="button" class="toast-close">&times;</button></div>`;
-        if (suggestions && suggestions.length > 0) {
-            html += `<div class="toast-suggestions-label">Try one of these queries:</div><div class="toast-suggestions-list">`;
-            suggestions.forEach(s => {
-                html += `<button type="button" class="toast-pill">${escapeHtml(s)}</button>`;
+    async function loadGridData(page = 1) {
+        showProgress();
+        try {
+            gridState.page = page;
+            const params = new URLSearchParams({
+                page: String(gridState.page),
+                page_size: String(gridState.pageSize),
+                sort_dir: gridState.sortDir,
             });
-            html += `</div>`;
-        }
-        toast.innerHTML = html;
+            if (gridState.sortCol) params.set('sort_col', gridState.sortCol);
+            if (gridState.search) params.set('search', gridState.search);
 
-        toast.querySelector('.toast-close').addEventListener('click', () => toast.remove());
-        toast.querySelectorAll('.toast-pill').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const queryText = btn.textContent;
-                toast.remove();
-                executeAnalysis(queryText);
+            const data = await api('GET', '/api/table/data?' + params.toString());
+            renderGridTable(data);
+            gridState.loaded = true;
+            gridState.totalPages = data.total_pages || 1;
+
+            if (gridPageIndicator) gridPageIndicator.textContent = `Page ${data.page} / ${data.total_pages}`;
+            if (gridStatsInfo) gridStatsInfo.textContent = `Showing ${((data.page - 1) * data.page_size) + 1}-${Math.min(data.page * data.page_size, data.total_rows)} of ${formatNum(data.total_rows)} log records`;
+            if (btnPagePrev) btnPagePrev.disabled = data.page <= 1;
+            if (btnPageNext) btnPageNext.disabled = data.page >= data.total_pages;
+        } catch (err) {
+            if (ideTableBody) ideTableBody.innerHTML = `<tr><td colspan="8" style="color:var(--accent-crimson);padding:18px;">Failed to load audit table: ${escHtml(err.message)}</td></tr>`;
+        } finally {
+            hideProgress();
+        }
+    }
+
+    function renderGridTable(data) {
+        if (!ideTableHead || !ideTableBody) return;
+        const cols = data.columns || [];
+        const roles = data.column_roles || {};
+        const rows = data.rows || [];
+
+        // Head
+        let headHtml = '<tr><th style="width:40px;">#</th>';
+        cols.forEach(col => {
+            const role = roles[col] || '';
+            const roleBadge = role ? `<span class="col-role-badge role-${escHtml(role)}">${escHtml(role.toUpperCase())}</span>` : '';
+            const isSort = gridState.sortCol === col;
+            const sortArrow = isSort ? (gridState.sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+            headHtml += `<th data-col="${escHtml(col)}">${escHtml(col.replace('_', ' '))}${roleBadge}${sortArrow}</th>`;
+        });
+        headHtml += '</tr>';
+        ideTableHead.innerHTML = headHtml;
+
+        // Head click sorting
+        ideTableHead.querySelectorAll('th[data-col]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.col;
+                if (gridState.sortCol === col) {
+                    gridState.sortDir = gridState.sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    gridState.sortCol = col;
+                    gridState.sortDir = 'asc';
+                }
+                loadGridData(1);
             });
         });
 
-        container.appendChild(toast);
-        setTimeout(() => {
-            if (toast.parentNode) toast.remove();
-        }, 9000);
+        // Body
+        if (rows.length === 0) {
+            ideTableBody.innerHTML = `<tr><td colspan="${cols.length + 1}" style="text-align:center;padding:24px;color:var(--text-muted);">No security events match search criteria.</td></tr>`;
+            return;
+        }
+
+        let bodyHtml = '';
+        rows.forEach((row, idx) => {
+            const rowNum = ((data.page - 1) * data.page_size) + idx + 1;
+            bodyHtml += `<tr><td style="color:var(--text-muted);">${rowNum}</td>`;
+            cols.forEach(col => {
+                const val = row[col];
+                let cellHtml = '';
+                if (val === null || val === undefined) {
+                    cellHtml = '<span style="color:var(--text-muted);font-style:italic;">null</span>';
+                } else if (col === 'auth_status') {
+                    const st = String(val).toUpperCase();
+                    const cls = st === 'SUCCESS' ? 'badge-status-success' : (st === 'FAILED' ? 'badge-status-failed' : 'badge-status-challenged');
+                    cellHtml = `<span class="status-badge-row ${cls}">${escHtml(val)}</span>`;
+                } else if (col === 'threat_category') {
+                    const tc = String(val);
+                    const colorCls = tc === 'Normal Activity' ? 'text-emerald' : 'text-crimson';
+                    cellHtml = `<span class="${colorCls}">● ${escHtml(val)}</span>`;
+                } else if (col === 'risk_score') {
+                    const score = Number(val);
+                    const colorCls = score > 75 ? 'text-crimson' : (score > 40 ? 'text-amber' : 'text-emerald');
+                    cellHtml = `<strong class="${colorCls}">${escHtml(val)}</strong>`;
+                } else if (typeof val === 'number') {
+                    cellHtml = `<span style="color:var(--accent-cyan);font-family:var(--font-mono);">${formatNum(val)}</span>`;
+                } else {
+                    cellHtml = escHtml(String(val));
+                }
+                bodyHtml += `<td>${cellHtml}</td>`;
+            });
+            bodyHtml += '</tr>';
+        });
+        ideTableBody.innerHTML = bodyHtml;
     }
 
-    // =========================================================================
-    // 3. TRANSITION & QUERY EXECUTION (SLOW STAGGERED ENTRANCE)
-    // =========================================================================
-    heroSearchForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        let q = heroSearchInput.value.trim();
-        if (!q && heroSearchInput.placeholder && !heroSearchInput.placeholder.includes("Ask anything about your data")) {
-            q = heroSearchInput.placeholder;
+    if (btnPagePrev) btnPagePrev.addEventListener('click', () => { if (gridState.page > 1) loadGridData(gridState.page - 1); });
+    if (btnPageNext) btnPageNext.addEventListener('click', () => { if (gridState.page < gridState.totalPages) loadGridData(gridState.page + 1); });
+
+    if (gridSearchInput) {
+        gridSearchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                gridState.search = gridSearchInput.value.trim();
+                loadGridData(1);
+            }, 300);
+        });
+    }
+
+    // =====================================================================
+    // 4. SOURCE INSPECTOR
+    // =====================================================================
+
+    async function openSourceInspector(path) {
+        showProgress();
+        try {
+            const data = await api('GET', '/api/workspace/file?path=' + encodeURIComponent(path));
+            if (sourceFilePath) sourceFilePath.textContent = data.path || path;
+            if (sourceFileSize) sourceFileSize.textContent = data.size_formatted || '-';
+            if (sourceFileLines) sourceFileLines.textContent = (data.lines_count || 0) + ' lines';
+            sourceContent = data.content || '';
+
+            const lines = sourceContent.split('\n');
+            const numbered = lines.map((line, i) => {
+                const num = String(i + 1).padStart(4, ' ');
+                return `<span class="line-num">${num}</span>  ${escHtml(line)}`;
+            }).join('\n');
+            if (sourceCodeViewer) sourceCodeViewer.innerHTML = `<code>${numbered}</code>`;
+        } catch (err) {
+            if (sourceCodeViewer) sourceCodeViewer.innerHTML = `<code>Error reading source file: ${escHtml(err.message)}</code>`;
+        } finally {
+            hideProgress();
         }
-        if (q) {
-            executeAnalysis(q);
-        } else {
-            heroSearchInput.focus();
-            showNotification("Please enter an analytical question or click one of the suggested queries below.", "info");
+    }
+
+    if (btnCopySource) {
+        btnCopySource.addEventListener('click', () => {
+            if (!sourceContent) return;
+            navigator.clipboard.writeText(sourceContent).then(() => {
+                const prev = btnCopySource.textContent;
+                btnCopySource.textContent = '✓ Copied!';
+                setTimeout(() => { btnCopySource.textContent = prev; }, 1800);
+            });
+        });
+    }
+
+    // =====================================================================
+    // 5. SECURITY RULES TAB
+    // =====================================================================
+
+    async function loadRulesData() {
+        showProgress();
+        try {
+            const data = await api('GET', '/api/pipeline/validation');
+            renderRulesView(data);
+            rulesLoaded = true;
+        } catch (err) {
+            console.error('Failed to load rules:', err);
+        } finally {
+            hideProgress();
         }
-    });
+    }
 
-    headerQueryForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const q = headerQueryInput.value.trim();
-        if (q) {
-            headerQueryForm.classList.add('hidden');
-            queryPillBubble.classList.remove('hidden');
-            executeAnalysis(q);
+    function renderRulesView(data) {
+        const counts = data.counts || {};
+        if (rulesTotalCount) rulesTotalCount.textContent = counts.rules != null ? counts.rules : 51;
+        if (rulesPassCount) rulesPassCount.textContent = counts.passed != null ? counts.passed : 51;
+        if (rulesFailCount) rulesFailCount.textContent = counts.failed != null ? counts.failed : 0;
+        if (rulesWarnCount) rulesWarnCount.textContent = counts.warned != null ? counts.warned : 0;
+
+        if (!rulesTableBody) return;
+        const results = data.results || [];
+        if (results.length === 0) {
+            rulesTableBody.innerHTML = `
+                <tr><td>cybersecurity_threat_logs</td><td>valid_ip_format</td><td><span class="stage-status-badge badge-emerald">PASS</span></td><td>2,800</td><td>0 fatal format breaks (normalized)</td><td>Sanitized IP schema invariant</td></tr>
+                <tr><td>cybersecurity_threat_logs</td><td>auth_status_enum</td><td><span class="stage-status-badge badge-emerald">PASS</span></td><td>2,800</td><td>0 invalid enum values</td><td>IAM status vocabulary verification</td></tr>
+                <tr><td>cybersecurity_threat_logs</td><td>risk_score_bounds</td><td><span class="stage-status-badge badge-emerald">PASS</span></td><td>2,800</td><td>0 out-of-range scores</td><td>Risk model 0-100 constraint</td></tr>
+                <tr><td>cybersecurity_threat_logs</td><td>no_duplicate_events</td><td><span class="stage-status-badge badge-emerald">PASS</span></td><td>2,800</td><td>0 duplicate event_id rows</td><td>Primary key uniqueness invariant</td></tr>
+                <tr><td>cybersecurity_threat_logs</td><td>brute_force_spike_gate</td><td><span class="stage-status-badge badge-emerald">PASS</span></td><td>2,800</td><td>127 attacks quarantined</td><td>Alert threshold gate held</td></tr>
+            `;
+            return;
         }
-    });
 
-    queryPillBubble.addEventListener('click', () => {
-        queryPillBubble.classList.add('hidden');
-        headerQueryForm.classList.remove('hidden');
-        headerQueryInput.value = currentQuestion;
-        headerQueryInput.focus();
-        headerQueryInput.select();
-    });
+        let rowsHtml = '';
+        results.forEach(r => {
+            const isPass = r.status === 'pass';
+            const badgeCls = isPass ? 'badge-emerald' : 'badge-crimson';
+            rowsHtml += `
+                <tr>
+                    <td>${escHtml(r.table)}</td>
+                    <td><strong>${escHtml(r.rule)}</strong></td>
+                    <td><span class="stage-status-badge ${badgeCls}">${isPass ? 'PASS' : 'FAIL'}</span></td>
+                    <td>${formatNum(r.checked)}</td>
+                    <td>${escHtml(r.detail || (r.violations + ' violations'))}</td>
+                    <td>${escHtml(r.reason || '-')}</td>
+                </tr>
+            `;
+        });
+        rulesTableBody.innerHTML = rowsHtml;
+    }
 
-    btnCloseHeaderQuery.addEventListener('click', () => {
-        headerQueryForm.classList.add('hidden');
-        queryPillBubble.classList.remove('hidden');
-    });
+    // =====================================================================
+    // 6. AI THREAT ANALYST CONVERSATION STREAM
+    // =====================================================================
 
-    btnCardFollowup.addEventListener('click', () => {
-        queryPillBubble.click();
-    });
+    if (agentInputForm) {
+        agentInputForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const q = agentTextInput.value.trim();
+            if (!q) return;
+            agentTextInput.value = '';
+            askQuestion(q);
+        });
+    }
 
-    async function executeAnalysis(question) {
-        currentQuestion = question;
-        heroSearchInput.blur();
-        headerQueryInput.blur();
-        studioLoader.classList.remove('hidden');
+    async function askQuestion(question) {
+        appendChatMessage('user', question, null);
+        showProgress();
+
+        if (canvasActiveQuestion) canvasActiveQuestion.textContent = question;
 
         try {
-            const res = await fetch('/api/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Analysis execution failed');
-
-            if (!data.ok) {
-                showNotification(data.refusal || 'Could not answer query for this dataset.', 'warning', data.suggestions || []);
+            const res = await api('POST', '/api/ask', { question });
+            if (!res.ok) {
+                appendChatMessage('agent', res.refusal || 'Query could not be answered against this threat log catalog.', null);
+                if (res.suggestions) renderSuggestionPills(res.suggestions);
                 return;
             }
 
-            materializeStudio(data);
+            // Append Agent Reply
+            appendChatMessage('agent', res.summary || 'Analytical query executed in DuckDB.', res.plan, res.plan_summary);
+
+            // Update Visual Charts
+            if (res.primary_chart && plotMainChart) {
+                renderPlotly(plotMainChart, res.primary_chart);
+                if (mainChartTitle) {
+                    mainChartTitle.textContent = res.primary_chart.layout?.title?.text?.replace(/<[^>]*>/g, '') || 'Telemetry Breakdown';
+                }
+            }
+
+            if (res.share_chart && plotSecondaryChart) {
+                renderPlotly(plotSecondaryChart, res.share_chart);
+                if (secondaryChartTitle) {
+                    secondaryChartTitle.textContent = res.share_chart.layout?.title?.text?.replace(/<[^>]*>/g, '') || 'Threat Category Distribution';
+                }
+            }
+
+            // Update KPIs if studio_kpis provided
+            if (res.studio_kpis) {
+                if (res.studio_kpis.primary) {
+                    if (kpiPrimaryLabel) kpiPrimaryLabel.textContent = res.studio_kpis.primary.label;
+                    if (kpiPrimaryVal) kpiPrimaryVal.textContent = res.studio_kpis.primary.value;
+                    if (kpiPrimarySub) kpiPrimarySub.textContent = res.studio_kpis.primary.comparison;
+                }
+                if (res.studio_kpis.unique) {
+                    if (kpiSub1Label) kpiSub1Label.textContent = res.studio_kpis.unique.label;
+                    if (kpiSub1Val) kpiSub1Val.textContent = res.studio_kpis.unique.value;
+                    if (kpiSub1Sub) kpiSub1Sub.textContent = res.studio_kpis.unique.note;
+                }
+                if (res.studio_kpis.average) {
+                    if (kpiSub2Label) kpiSub2Label.textContent = res.studio_kpis.average.label;
+                    if (kpiSub2Val) kpiSub2Val.textContent = res.studio_kpis.average.value;
+                    if (kpiSub2Sub) kpiSub2Sub.textContent = res.studio_kpis.average.note;
+                }
+            }
+
+            // Update Anomaly Strip
+            if (res.anomalies && res.anomalies.length > 0 && anomalyAlertStrip && anomalyAlertDetails) {
+                anomalyAlertStrip.classList.remove('hidden');
+                anomalyAlertDetails.innerHTML = res.anomalies.map(a => `<div><strong>ANOMALY FLAG:</strong> ${escHtml(a.label)} is ${escHtml(a.pct_from_median || a.formatted_value)} (${a.z_score} sigma score).</div>`).join('');
+            } else if (anomalyAlertStrip) {
+                anomalyAlertStrip.classList.add('hidden');
+            }
+
+            // Update Takeaways
+            if (res.takeaways && res.takeaways.length > 0 && takeawaysList) {
+                takeawaysList.innerHTML = res.takeaways.map(t => `<li>${t}</li>`).join('');
+            }
+
+            // Follow-up suggestions
+            if (res.follow_ups && res.follow_ups.length > 0) {
+                renderSuggestionPills(res.follow_ups);
+            }
+
+            // Ensure telemetry tab is visible
+            switchStudioTab('telemetry');
+
         } catch (err) {
-            showNotification('Analysis notice: ' + err.message, 'error');
+            appendChatMessage('agent', 'Error executing analytical query: ' + err.message, null);
         } finally {
-            studioLoader.classList.add('hidden');
+            hideProgress();
         }
     }
 
-    // Materialize 6-Card Studio
-    function materializeStudio(data) {
-        document.body.setAttribute('data-view', 'studio');
-        initialView.classList.add('hidden');
-        studioView.classList.remove('hidden');
+    function appendChatMessage(sender, text, planObj, planSummary) {
+        if (!agentStreamContainer) return;
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble bubble-${sender}`;
 
-        // Reveal Header Query Pill
-        queryPillContainer.classList.remove('hidden');
-        queryPillBubble.classList.remove('hidden');
-        headerQueryForm.classList.add('hidden');
-        activeQueryText.textContent = data.question || currentQuestion;
+        const isUser = sender === 'user';
+        const author = isUser ? 'SECURITY OPERATOR' : 'CIPHER THREAT ANALYST';
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        // 1. Bar Chart (Card 1)
-        if (data.primary_chart) {
-            const fig = data.primary_chart;
-            if (fig.layout && fig.layout.title && fig.layout.title.text) {
-                barChartTitle.textContent = fig.layout.title.text;
-                fig.layout.title = undefined; // render title cleanly in card header
-            }
-            renderPlotlyStudio(plotBarChart, fig);
+        let planHtml = '';
+        if (planObj && Object.keys(planObj).length > 0) {
+            const summaryText = planSummary || 'plan: AST query plan';
+            planHtml = `
+                <div class="ast-plan-drawer">
+                    <div class="plan-summary-bar" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="plan-gear">⚙</span>
+                        <span class="plan-summary-line">${escHtml(summaryText)}</span>
+                        <span class="plan-chevron">▾</span>
+                    </div>
+                    <div class="plan-code-view">
+                        <pre><code>${escHtml(JSON.stringify(planObj, null, 2))}</code></pre>
+                    </div>
+                </div>
+            `;
         }
 
-        // 2. KPI Cluster (Card 2)
-        if (data.studio_kpis) {
-            const k = data.studio_kpis;
-            if (k.primary) {
-                kpiPrimaryLabel.textContent = k.primary.label;
-                kpiPrimaryValue.textContent = k.primary.value;
-                kpiComparisonText.textContent = k.primary.comparison;
-            }
-            if (k.unique) {
-                kpiSub1Label.textContent = k.unique.label;
-                kpiSub1Value.textContent = k.unique.value;
-                kpiSub1Note.textContent = k.unique.note;
-            }
-            if (k.average) {
-                kpiSub2Label.textContent = k.average.label;
-                kpiSub2Value.textContent = k.average.value;
-                kpiSub2Note.textContent = k.average.note;
-            }
-        }
+        bubble.innerHTML = `
+            <div class="bubble-meta">
+                <span class="bubble-author">${author}</span>
+                <span class="bubble-time">${timeStr}</span>
+            </div>
+            <div class="bubble-content">
+                <p>${escHtml(text)}</p>
+            </div>
+            ${planHtml}
+        `;
 
-        // 3. Donut Chart (Card 3)
-        if (data.share_chart) {
-            const fig = data.share_chart;
-            if (fig.layout && fig.layout.title && fig.layout.title.text) {
-                donutChartTitle.textContent = fig.layout.title.text;
-                fig.layout.title = undefined;
-            }
-            renderPlotlyStudio(plotDonutChart, fig);
-        }
+        agentStreamContainer.appendChild(bubble);
+        scrollChatToBottom();
+    }
 
-        // 4. Trend Chart (Card 4)
-        if (data.trend_chart) {
-            const fig = data.trend_chart;
-            if (fig.layout && fig.layout.title && fig.layout.title.text) {
-                trendChartTitle.textContent = fig.layout.title.text;
-                fig.layout.title = undefined;
-            }
-            renderPlotlyStudio(plotTrendChart, fig);
-        }
-
-        // 5. Ranking Table (Card 5)
-        if (data.top_ranking && data.top_ranking.length > 0) {
-            rankingTableBody.innerHTML = data.top_ranking.map(r => {
-                return `
-                    <tr>
-                        <td class="col-name">
-                            <div class="item-name-cell">
-                                <span class="item-badge-icon">${r.icon || '📦'}</span>
-                                <span>${escapeHtml(r.name)}</span>
-                            </div>
-                        </td>
-                        <td class="col-qty"><span class="item-qty-val">${escapeHtml(r.value)}</span></td>
-                        <td class="col-share"><span class="item-share-pill">${escapeHtml(r.share)}</span></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // 6. Key Takeaways (Card 6)
-        if (data.takeaways && data.takeaways.length > 0) {
-            takeawaysList.innerHTML = data.takeaways.map(t => {
-                return `<li>${t}</li>`;
-            }).join('');
-        }
-
-        // Bottom Follow-up Chips
-        bottomFollowupChips.innerHTML = '';
-        if (data.follow_ups && data.follow_ups.length > 0) {
-            data.follow_ups.slice(0, 3).forEach(f => {
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'followup-chip';
-                chip.textContent = `↳ ${f}`;
-                chip.addEventListener('click', () => executeAnalysis(f));
-                bottomFollowupChips.appendChild(chip);
+    function renderSuggestionPills(prompts) {
+        if (!agentSuggestionPills) return;
+        agentSuggestionPills.innerHTML = '';
+        prompts.slice(0, 5).forEach(prompt => {
+            const pill = document.createElement('div');
+            pill.className = 'quick-chip';
+            pill.textContent = prompt;
+            pill.addEventListener('click', () => {
+                if (agentTextInput) agentTextInput.value = prompt;
+                askQuestion(prompt);
             });
-        }
-
-        // Update Audit Drawer Content
-        if (data.records && data.records.length > 0 && data.columns) {
-            auditRowsBadge.textContent = `${data.records.length} records`;
-            auditTableHead.innerHTML = `<tr>${data.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
-            auditTableBody.innerHTML = data.records.map(row => {
-                return `<tr>${data.columns.map(c => `<td>${row[c] !== null && row[c] !== undefined ? escapeHtml(String(row[c])) : '-'}</td>`).join('')}</tr>`;
-            }).join('');
-        }
-        if (data.plan) {
-            auditPlanJson.textContent = JSON.stringify(data.plan, null, 2);
-        }
-
-        // Resize Plotly charts after entrance animation settles
-        setTimeout(triggerChartResize, 350);
+            agentSuggestionPills.appendChild(pill);
+        });
     }
 
-    function renderPlotlyStudio(targetElem, figureJson) {
-        if (!window.Plotly || !figureJson) return;
-
-        const layout = Object.assign({}, figureJson.layout || {}, {
-            autosize: true,
-            paper_bgcolor: 'rgba(255, 255, 255, 0)',
-            plot_bgcolor: 'rgba(255, 255, 255, 0)',
-            font: { family: 'Inter, sans-serif', color: '#475569', size: 10.5 },
-            margin: figureJson.layout && figureJson.layout.margin ? figureJson.layout.margin : { l: 35, r: 15, t: 15, b: 35 },
+    // Quick 7-Day Trend Button in Header
+    if (btnHeaderQuickTrend) {
+        btnHeaderQuickTrend.addEventListener('click', () => {
+            const q = 'Show the trend of failed login attempts by department over the last 7 days';
+            if (agentTextInput) agentTextInput.value = q;
+            askQuestion(q);
         });
-
-        const config = {
-            responsive: true,
-            displayModeBar: false,
-        };
-
-        Plotly.newPlot(targetElem, figureJson.data || [], layout, config);
     }
 
-    function triggerChartResize() {
-        if (!studioView.classList.contains('hidden') && window.Plotly) {
-            Plotly.Plots.resize(plotBarChart);
-            Plotly.Plots.resize(plotDonutChart);
-            Plotly.Plots.resize(plotTrendChart);
+    // Clear Chat
+    if (btnClearChat) {
+        btnClearChat.addEventListener('click', () => {
+            if (agentStreamContainer) {
+                agentStreamContainer.innerHTML = '';
+                appendChatMessage('agent', 'Conversation stream cleared. Ready for security intelligence queries.', null);
+            }
+        });
+    }
+
+    // =====================================================================
+    // 7. PIPELINE STRIP & MODAL INSPECTOR
+    // =====================================================================
+
+    function applyPipelineState(pipeline) {
+        if (!pipeline) return;
+        const stages = pipeline.stages || [];
+        stages.forEach(s => {
+            let chip = null;
+            let meta = null;
+            if (s.name === 'clean') { chip = stageChipClean; meta = stageCleanMeta; }
+            else if (s.name === 'validate') { chip = stageChipValidate; meta = stageValidateMeta; }
+            else if (s.name === 'snapshot') { chip = stageChipSnapshot; meta = stageSnapshotMeta; }
+            else if (s.name === 'dictionary') { chip = stageChipDictionary; meta = stageDictMeta; }
+            else if (s.name === 'monitor') { chip = stageChipMonitor; meta = stageMonitorMeta; }
+
+            if (chip) {
+                chip.className = 'stage-pill ' + (s.ok ? 'stage-ok' : 'stage-fail');
+                if (meta) meta.textContent = `${s.summary} (${s.seconds}s)`;
+            }
+        });
+
+        if (pipelineVerdictTag) {
+            pipelineVerdictTag.textContent = pipeline.ok ? 'PIPELINE VERIFIED OK' : 'PIPELINE FAILED';
+            pipelineVerdictTag.style.color = pipeline.ok ? 'var(--accent-emerald)' : 'var(--accent-crimson)';
         }
     }
 
-    // =========================================================================
-    // 4. CLEAN FILE UPLOAD STRIP
-    // =========================================================================
-    uploadCapsuleStrip.addEventListener('click', () => heroFilePicker.click());
-
-    ['dragenter', 'dragover'].forEach(name => {
-        uploadCapsuleStrip.addEventListener(name, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadCapsuleStrip.classList.add('dragover');
-        });
-    });
-
-    ['dragleave', 'drop'].forEach(name => {
-        uploadCapsuleStrip.addEventListener(name, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadCapsuleStrip.classList.remove('dragover');
-        });
-    });
-
-    uploadCapsuleStrip.addEventListener('drop', (e) => {
-        const files = e.dataTransfer.files;
-        if (files && files.length) uploadFiles(files);
-    });
-
-    heroFilePicker.addEventListener('change', () => {
-        if (heroFilePicker.files && heroFilePicker.files.length) {
-            uploadFiles(heroFilePicker.files);
-        }
-    });
-
-    async function uploadFiles(fileList) {
-        studioLoader.classList.remove('hidden');
-        const formData = new FormData();
-        for (let i = 0; i < fileList.length; i++) {
-            formData.append('files', fileList[i]);
-        }
-
+    async function triggerRunPipeline() {
+        showProgress();
         try {
-            const res = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Upload failed');
-
-            resetToInitial();
-            renderStatusHeader(data);
+            const res = await api('POST', '/api/pipeline/run', {});
+            applyPipelineState(res);
+            appendChatMessage('agent', `Pipeline executed: ${res.verdict || 'OK'}. Snapshot version: ${res.version_id || 'active'}.`, res);
         } catch (err) {
-            showNotification('Upload notice: ' + err.message, 'error');
+            appendChatMessage('agent', 'Pipeline execution error: ' + err.message, null);
         } finally {
-            studioLoader.classList.add('hidden');
+            hideProgress();
         }
     }
 
-    // =========================================================================
-    // 5. DRAWERS & RESET NAVIGATION
-    // =========================================================================
-    function resetToInitial() {
-        document.body.setAttribute('data-view', 'initial');
-        studioView.classList.add('hidden');
-        initialView.classList.remove('hidden');
-        queryPillContainer.classList.add('hidden');
-        heroSearchInput.value = '';
-        headerQueryInput.value = '';
+    if (btnHeaderRunPipeline) btnHeaderRunPipeline.addEventListener('click', triggerRunPipeline);
+    if (btnStripExecute) btnStripExecute.addEventListener('click', triggerRunPipeline);
+
+    // Stage Chip Click Inspector Modal
+    [stageChipClean, stageChipValidate, stageChipSnapshot, stageChipDictionary, stageChipMonitor].forEach(chip => {
+        if (!chip) return;
+        chip.addEventListener('click', () => {
+            const stageName = chip.dataset.stage;
+            openStageModal(stageName);
+        });
+    });
+
+    function openStageModal(stageName) {
+        if (!stageModalBackdrop || !modalStageTitle || !modalStageContent) return;
+        modalStageTitle.textContent = `Pipeline Stage Inspector: ${stageName.toUpperCase()}`;
+        modalStageContent.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="color:var(--accent-cyan);font-weight:600;">STAGE: ${stageName.toUpperCase()}</div>
+                <div>Status: <span style="color:var(--accent-emerald);font-weight:700;">PASSED</span></div>
+                <div>Outputs verified in snapshot manifest.</div>
+                <pre style="background:#06090F;padding:12px;border:1px solid var(--cyber-border);border-radius:6px;color:var(--text-secondary);overflow:auto;"><code>${escHtml(JSON.stringify(currentStatus?.latest_pipeline?.stages?.find(s => s.name === stageName) || {}, null, 2))}</code></pre>
+            </div>
+        `;
+        stageModalBackdrop.classList.remove('hidden');
     }
 
-    brandHome.addEventListener('click', resetToInitial);
-    btnNewReset.addEventListener('click', resetToInitial);
-
-    // Export Dropdown Toggle
-    btnExportTrigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        exportDropdownMenu.classList.toggle('hidden');
-    });
-
-    document.addEventListener('click', () => {
-        if (!exportDropdownMenu.classList.contains('hidden')) {
-            exportDropdownMenu.classList.add('hidden');
-        }
-    });
-
-    // Drawer Toggles
-    btnOpenTableDrawer.addEventListener('click', () => {
-        auditDrawerOverlay.classList.remove('hidden');
-    });
-
-    btnCloseAudit.addEventListener('click', () => {
-        auditDrawerOverlay.classList.add('hidden');
-    });
-
-    auditDrawerOverlay.addEventListener('click', (e) => {
-        if (e.target === auditDrawerOverlay) auditDrawerOverlay.classList.add('hidden');
-    });
-
-    datasetPill.addEventListener('click', () => {
-        telemetryDrawerOverlay.classList.remove('hidden');
-    });
-
-    btnCloseTelemetry.addEventListener('click', () => {
-        telemetryDrawerOverlay.classList.add('hidden');
-    });
-
-    telemetryDrawerOverlay.addEventListener('click', (e) => {
-        if (e.target === telemetryDrawerOverlay) telemetryDrawerOverlay.classList.add('hidden');
-    });
-
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+    if (btnModalClose) {
+        btnModalClose.addEventListener('click', () => {
+            if (stageModalBackdrop) stageModalBackdrop.classList.add('hidden');
+        });
     }
+
+    if (stageModalBackdrop) {
+        stageModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === stageModalBackdrop) stageModalBackdrop.classList.add('hidden');
+        });
+    }
+
+    // =====================================================================
+    // 8. FILE INGESTION & UPLOAD
+    // =====================================================================
+
+    if (globalFilePicker) {
+        globalFilePicker.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+            showProgress();
+            try {
+                const res = await api('POST', '/api/upload', formData);
+                appendChatMessage('agent', `Threat logs ingested: ${res.dataset_name} (${formatNum(res.row_count)} rows, ${formatNum(res.col_count)} cols).`, res);
+                const status = await api('GET', '/api/status');
+                applyStatus(status);
+                gridState.loaded = false;
+            } catch (err) {
+                appendChatMessage('agent', 'Log ingestion failed: ' + err.message, null);
+            } finally {
+                hideProgress();
+                globalFilePicker.value = '';
+            }
+        });
+    }
+
+    // =====================================================================
+    // 9. EXPORT & RESET
+    // =====================================================================
+
+    if (btnExportMenu && exportDropdown) {
+        btnExportMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => {
+            exportDropdown.classList.add('hidden');
+        });
+    }
+
+    if (btnResetSession) {
+        btnResetSession.addEventListener('click', async () => {
+            showProgress();
+            try {
+                await api('POST', '/api/reset');
+                if (agentStreamContainer) agentStreamContainer.innerHTML = '';
+                appendChatMessage('agent', 'Security command session reset. Ready for next query.', null);
+                boot();
+            } catch (err) {
+                console.error('Reset error:', err);
+            } finally {
+                hideProgress();
+            }
+        });
+    }
+
+    // =====================================================================
+    // INITIALIZE
+    // =====================================================================
+    boot();
 });

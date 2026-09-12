@@ -3,363 +3,605 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cipher — Autonomous AI Data Intelligence</title>
+    <title>Cipher - Zero-Trust Threat Intelligence & Command Center</title>
+    <!-- Typography: Outfit (Display/Headings), Fira Sans (UI Body), JetBrains Mono (Data & Telemetry) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Plotly for deterministic analytical visualizations -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body data-view="initial">
-    <!-- Star Constellation Ambient Canvas -->
-    <canvas id="constellation-canvas" class="constellation-canvas"></canvas>
+<body class="cipher-app">
+    <!-- Ambient Dynamic Glow Layers -->
+    <div class="ambient-glow glow-cyan"></div>
+    <div class="ambient-glow glow-violet"></div>
 
-    <!-- Soft Ethereal Lighting Wash -->
-    <div class="ethereal-ambient-glow"></div>
-
-    <!-- App Header -->
-    <header class="app-header">
-        <div class="header-left">
-            <div class="brand" id="brand-home" title="Return to Cipher Home">
-                <span class="brand-glyph">✦</span>
-                <span class="brand-name">Cipher</span>
-            </div>
-        </div>
-
-        <!-- Center: Floating Query Pill (Expands to Input on Hover/Click) -->
-        <div class="header-center">
-            <div id="query-pill-container" class="query-pill-container hidden">
-                <div class="query-pill-bubble" id="query-pill-bubble" title="Click to ask a follow-up question">
-                    <span class="pill-sparkle">✦</span>
-                    <span id="active-query-text" class="active-query-text">total quantity by item name</span>
-                    <span class="pill-chevron">∨</span>
+    <!-- =================================================================== -->
+    <!-- TOP NAVIGATION & DEFENSE COMMAND BAR                                -->
+    <!-- =================================================================== -->
+    <header class="command-bar">
+        <div class="command-bar-left">
+            <div class="brand-unit" id="brand-home" title="Cipher Zero-Trust Command Center">
+                <span class="radar-dot"></span>
+                <span class="brand-sparkle">✦</span>
+                <div class="brand-titles">
+                    <span class="brand-name">CIPHER</span>
+                    <span class="brand-tag">ZERO-TRUST COMMAND</span>
                 </div>
-                <form id="header-query-form" class="header-query-form hidden">
-                    <span class="form-sparkle">✦</span>
-                    <input type="text" id="header-query-input" class="header-query-input" placeholder="Ask a follow-up or refine query..." autocomplete="off">
-                    <button type="submit" class="btn-header-submit">Ask ↵</button>
-                    <button type="button" id="btn-close-header-query" class="btn-header-close">✕</button>
-                </form>
+            </div>
+
+            <div class="nav-divider"></div>
+
+            <div class="telemetry-source-pill" id="workspace-crumb" title="Active Security Feed Source">
+                <span class="feed-icon">🛡️</span>
+                <div class="feed-meta">
+                    <span class="feed-label">DATASET FEED</span>
+                    <span class="feed-file" id="active-crumb-path">cybersecurity_threat_logs.csv</span>
+                </div>
             </div>
         </div>
 
-        <div class="header-right">
-            <div id="dataset-pill" class="dataset-pill" title="Click to view schema & health">
-                <span class="status-dot"></span>
-                <span id="header-dataset-name">E-commerce_Orders</span>
-                <span id="header-dataset-meta" class="meta-light">1,500 rows • 6 cols</span>
+        <div class="command-bar-center">
+            <!-- DEFCON Threat Index Status Badge -->
+            <div class="defcon-status-badge" id="snapshot-trust-pill" title="Active Threat Index & Snapshot Governance">
+                <span class="threat-pulse-indicator status-amber" id="trust-dot"></span>
+                <div class="threat-meta">
+                    <span class="threat-level-text" id="trust-label">DEFCON 2: ELEVATED THREAT</span>
+                    <span class="threat-snapshot-text" id="trust-badge">IMMUTABLE SNAPSHOT 20260906T000311</span>
+                </div>
             </div>
+        </div>
 
-            <div class="export-wrap">
-                <button id="btn-export-trigger" class="btn-icon-nav" title="Export Reports & Data">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <div class="command-bar-right">
+            <button type="button" class="btn-cyber btn-primary-cyan" id="btn-header-run-pipeline" title="Run full Data Rescue & Zero-Trust Validation Pipeline">
+                <span class="btn-glyph">⚡</span>
+                <span>Run Pipeline</span>
+            </button>
+
+            <button type="button" class="btn-cyber btn-action-trend" id="btn-header-quick-trend" title="Analyze 7-Day Failed Login Trend by Department (Track 2 Bonus)">
+                <span class="btn-glyph">📈</span>
+                <span>7-Day Trend</span>
+            </button>
+
+            <label class="btn-cyber btn-ghost" for="global-file-picker" title="Ingest raw CSV / JSON log file">
+                <span class="btn-glyph">↑</span>
+                <span>Ingest Logs</span>
+                <input type="file" id="global-file-picker" multiple accept=".csv,.tsv,.xlsx,.xls,.json" hidden>
+            </label>
+
+            <!-- Export Dropdown -->
+            <div class="dropdown-wrapper">
+                <button type="button" class="btn-cyber btn-ghost" id="btn-export-menu" title="Export Security Intelligence Reports">
+                    <span>Export</span>
+                    <span class="caret">▾</span>
                 </button>
-                <div id="export-dropdown-menu" class="export-dropdown-menu hidden">
-                    <a href="/api/export/markdown" target="_blank" download="hugr_report.md" class="export-menu-link">
-                        <span>📄</span>
-                        <div>
-                            <div class="link-label">Executive Markdown</div>
-                            <div class="link-sub">Full briefing notes</div>
+                <div class="dropdown-menu hidden" id="export-dropdown">
+                    <a href="/api/export/markdown" target="_blank" download="cipher_threat_report.md" class="dropdown-link">
+                        <span class="link-icon">📄</span>
+                        <div class="link-text">
+                            <span class="link-title">Executive Briefing (MD)</span>
+                            <span class="link-desc">Markdown intelligence notes</span>
                         </div>
                     </a>
-                    <a href="/api/export/html" target="_blank" download="hugr_report.html" class="export-menu-link">
-                        <span>🌐</span>
-                        <div>
-                            <div class="link-label">Standalone HTML</div>
-                            <div class="link-sub">Interactive presentation</div>
+                    <a href="/api/export/html" target="_blank" download="cipher_threat_report.html" class="dropdown-link">
+                        <span class="link-icon">🌐</span>
+                        <div class="link-text">
+                            <span class="link-title">Interactive Intel Brief (HTML)</span>
+                            <span class="link-desc">Standalone presentation report</span>
                         </div>
                     </a>
-                    <a href="/api/export/csv" download="hugr_data.csv" class="export-menu-link">
-                        <span>📊</span>
-                        <div>
-                            <div class="link-label">Clean CSV Table</div>
-                            <div class="link-sub">Processed data rows</div>
+                    <a href="/api/export/csv" download="cipher_threat_logs.csv" class="dropdown-link">
+                        <span class="link-icon">📊</span>
+                        <div class="link-text">
+                            <span class="link-title">Clean Threat Log Table (CSV)</span>
+                            <span class="link-desc">Normalized DuckDB records</span>
                         </div>
                     </a>
                 </div>
             </div>
 
-            <button id="btn-new-reset" class="btn-icon-nav" title="New Exploration">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            <button type="button" class="btn-cyber btn-icon-square" id="btn-reset-session" title="Reset Session State">
+                <span class="btn-glyph">↺</span>
             </button>
         </div>
     </header>
 
-    <!-- Global Progress Glow -->
-    <div id="studio-loader" class="studio-loader hidden">
-        <div class="loader-capsule">
-            <div class="loader-spin-ring"></div>
-            <span>Reasoning across DuckDB tables...</span>
-        </div>
+    <!-- Global Progress Glow Indicator -->
+    <div class="progress-bar-wrap hidden" id="ide-progress-strip">
+        <div class="progress-bar-glow"></div>
     </div>
 
-    <!-- ================================================================= -->
-    <!-- VIEW 1: SPACIOUS INITIAL CANVAS                                   -->
-    <!-- ================================================================= -->
-    <!-- ================================================================= -->
-    <!-- VIEW 1: ARCHITECTURAL INITIAL CANVAS                              -->
-    <!-- ================================================================= -->
-    <section id="initial-view" class="initial-view">
-        <!-- Subtle Ambient Spatial Instrumentation Indicators -->
-        <div class="spatial-marker marker-tl" aria-hidden="true">
-            <span class="marker-crosshair">+</span>
-            <span class="marker-label">ENGINE // DUCKDB OLAP</span>
-        </div>
-        <div class="spatial-marker marker-tr" aria-hidden="true">
-            <span class="marker-label">PRECISION // ZERO-HALLUCINATION</span>
-            <span class="marker-crosshair">+</span>
-        </div>
-        <div class="spatial-marker marker-bl" aria-hidden="true">
-            <span class="marker-crosshair">+</span>
-            <span class="marker-label">SPATIAL MESH // ACTIVE</span>
-        </div>
-        <div class="spatial-marker marker-br" aria-hidden="true">
-            <span class="marker-label">LATENCY // &lt;2MS</span>
-            <span class="marker-crosshair">+</span>
-        </div>
+    <!-- =================================================================== -->
+    <!-- MAIN APPLICATION CONTAINER                                          -->
+    <!-- =================================================================== -->
+    <div class="app-layout-container">
 
-        <div class="hero-center-box">
-            <div class="hero-pill-badge">
-                <span class="badge-dot"></span>
-                <span>Autonomous Data Intelligence</span>
-                <span class="badge-sep">/</span>
-                <span class="badge-spec">In-Memory DuckDB</span>
-            </div>
-
-            <h1 class="hero-heading">
-                What would you like to uncover?
-            </h1>
-            <p class="hero-caption">
-                Natural-language analytical queries grounded directly in in-memory DuckDB OLAP.
-            </p>
-
-            <!-- Refined Precision Question Box -->
-            <form id="hero-search-form" class="hero-search-form">
-                <div class="hero-capsule">
-                    <span class="capsule-sparkle">✦</span>
-                    <input type="text" id="hero-search-input" class="hero-search-input" placeholder="Ask anything about your data, e.g. total quantity by item name..." autocomplete="off" spellcheck="false">
-                    <button type="submit" id="btn-hero-analyze" class="btn-hero-analyze">
-                        <span>Analyze</span>
-                        <kbd>↵</kbd>
-                    </button>
+        <!-- =============================================================== -->
+        <!-- TOP KPI METRIC STRIP (4 SPACIOUS GLASS CARDS)                   -->
+        <!-- =============================================================== -->
+        <section class="kpi-banner-grid">
+            <!-- Card 1: Total Events -->
+            <div class="kpi-glass-card border-cyan">
+                <div class="kpi-top">
+                    <span class="kpi-tag">TOTAL TELEMETRY</span>
+                    <span class="kpi-badge badge-cyan">LIVE STREAM</span>
                 </div>
-            </form>
-
-            <!-- Integrated File Upload Strip Directly Beneath -->
-            <div class="upload-capsule-strip" id="upload-capsule-strip" title="Drop CSV or Excel to analyze">
-                <input type="file" id="hero-file-picker" multiple accept=".csv,.tsv,.xlsx,.xls" hidden>
-                <div class="upload-strip-inner">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    <span>Drop a CSV, Excel, or multiple files · or <strong class="link-browse">browse</strong></span>
-                    <div class="format-tags">
-                        <span>.CSV</span><span>.XLSX</span><span>PARQUET</span>
-                    </div>
+                <div class="kpi-middle">
+                    <div class="kpi-big-number" id="kpi-primary-val">2,800</div>
+                    <div class="kpi-heading" id="kpi-primary-label">Security Events Processed</div>
+                </div>
+                <div class="kpi-bottom" id="kpi-primary-sub">
+                    <span class="metric-delta delta-cyan">↑ 18.4%</span>
+                    <span>event velocity vs 30-day baseline</span>
                 </div>
             </div>
 
-            <!-- Starter Prompt Suggestions -->
-            <div class="hero-starter-row">
-                <span class="starter-label">SUGGESTIONS:</span>
-                <div id="starter-pills-list" class="starter-pills-list"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ================================================================= -->
-    <!-- VIEW 2: SPATIOUS 6-CARD ANALYTICAL STUDIO (MATCHING USER DESIGN)  -->
-    <!-- ================================================================= -->
-    <main id="studio-view" class="studio-view hidden">
-        <div class="studio-grid-container">
-            <!-- --------------------------------------------------------- -->
-            <!-- ROW 1: Bar Chart + KPI Cluster + Donut Chart              -->
-            <!-- --------------------------------------------------------- -->
-            <div class="studio-row studio-row-top">
-                <!-- Card 1: Main Vertical Gradient Bar Chart -->
-                <div class="studio-card card-bar-chart" id="card-bar-chart">
-                    <div class="card-header-clean">
-                        <div class="title-with-icon">
-                            <span class="card-icon-indicator">📊</span>
-                            <h3 id="bar-chart-title" class="card-title-text">Total Quantity by Item Name</h3>
-                        </div>
-                        <div class="card-quick-actions">
-                            <span class="action-glyph" title="Bar Breakdown">∿</span>
-                            <span class="action-glyph" title="Fullscreen">⛶</span>
-                        </div>
-                    </div>
-                    <div class="card-body-chart">
-                        <div id="plot-bar-chart" class="plotly-chart-box"></div>
-                    </div>
+            <!-- Card 2: Failed Login Spikes (Brute Force Indicator) -->
+            <div class="kpi-glass-card border-crimson">
+                <div class="kpi-top">
+                    <span class="kpi-tag">AUTHENTICATION INTEGRITY</span>
+                    <span class="kpi-badge badge-crimson">SPIKE DETECTED</span>
                 </div>
-
-                <!-- Card 2: Center KPI Cluster -->
-                <div class="studio-kpi-cluster" id="card-kpi-cluster">
-                    <!-- Top Primary Hero KPI Card -->
-                    <div class="kpi-hero-card">
-                        <div class="kpi-header-row">
-                            <span class="kpi-prefix">✦</span>
-                            <span id="kpi-primary-label" class="kpi-label">Total Quantity</span>
-                            <span class="kpi-plus-icon">+</span>
-                        </div>
-                        <div id="kpi-primary-value" class="kpi-huge-value">1,596</div>
-                        <div class="kpi-comparison-row">
-                            <span class="arrow-up">↑</span>
-                            <span id="kpi-comparison-text" class="comparison-text">12.4% vs. previous period</span>
-                        </div>
-                    </div>
-
-                    <!-- Bottom Sub-KPIs (2 Cards Side-by-Side) -->
-                    <div class="kpi-sub-row">
-                        <div class="kpi-sub-card">
-                            <div class="sub-kpi-label">
-                                <span>✦</span>
-                                <span id="kpi-sub1-label">Unique Items</span>
-                            </div>
-                            <div id="kpi-sub1-value" class="sub-kpi-value">47</div>
-                            <div id="kpi-sub1-note" class="sub-kpi-note">no change</div>
-                        </div>
-                        <div class="kpi-sub-card">
-                            <div class="sub-kpi-label">
-                                <span>✦</span>
-                                <span id="kpi-sub2-label">Avg. Quantity per Item</span>
-                            </div>
-                            <div id="kpi-sub2-value" class="sub-kpi-value">33.95</div>
-                            <div id="kpi-sub2-note" class="sub-kpi-note">across 47 items</div>
-                        </div>
-                    </div>
+                <div class="kpi-middle">
+                    <div class="kpi-big-number text-crimson" id="kpi-sub1-val">3,715</div>
+                    <div class="kpi-heading" id="kpi-sub1-label">Failed Login Attempts</div>
                 </div>
-
-                <!-- Card 3: Share of Total Donut Chart -->
-                <div class="studio-card card-donut-chart" id="card-donut-chart">
-                    <div class="card-header-clean">
-                        <div class="title-with-icon">
-                            <h3 id="donut-chart-title" class="card-title-text">Share of Total Quantity</h3>
-                        </div>
-                    </div>
-                    <div class="card-body-chart">
-                        <div id="plot-donut-chart" class="plotly-chart-box"></div>
-                    </div>
+                <div class="kpi-bottom text-crimson" id="kpi-sub1-sub">
+                    <span>Engineering &amp; DevOps under brute force</span>
                 </div>
             </div>
 
-            <!-- --------------------------------------------------------- -->
-            <!-- ROW 2: Trend Spline + Ranking Table + Key Takeaways        -->
-            <!-- --------------------------------------------------------- -->
-            <div class="studio-row studio-row-bottom">
-                <!-- Card 4: Quantity Trend Spline Chart -->
-                <div class="studio-card card-trend-chart" id="card-trend-chart">
-                    <div class="card-header-clean">
-                        <div class="title-with-icon">
-                            <h3 id="trend-chart-title" class="card-title-text">Quantity Trend (Top 3 Items)</h3>
-                        </div>
-                    </div>
-                    <div class="card-body-chart">
-                        <div id="plot-trend-chart" class="plotly-chart-box"></div>
-                    </div>
+            <!-- Card 3: High-Risk Anomalies -->
+            <div class="kpi-glass-card border-amber">
+                <div class="kpi-top">
+                    <span class="kpi-tag">INSIDER THREAT RISK</span>
+                    <span class="kpi-badge badge-amber">ANOMALY DETECTED</span>
                 </div>
-
-                <!-- Card 5: Top 5 Items by Quantity Ranking Table -->
-                <div class="studio-card card-ranking-table" id="card-ranking-table">
-                    <div class="card-header-clean">
-                        <div class="title-with-icon">
-                            <h3 id="ranking-table-title" class="card-title-text">Top 5 Items by Quantity</h3>
-                        </div>
-                        <span class="table-opt-icon">∨</span>
-                    </div>
-                    <div class="ranking-table-wrap">
-                        <table class="ranking-table">
-                            <thead>
-                                <tr>
-                                    <th class="col-name">Item Name</th>
-                                    <th class="col-qty">Quantity</th>
-                                    <th class="col-share">Share</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ranking-table-body">
-                                <!-- Populated dynamically with real DuckDB calculations -->
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="kpi-middle">
+                    <div class="kpi-big-number text-amber" id="kpi-sub2-val">784</div>
+                    <div class="kpi-heading" id="kpi-sub2-label">High-Risk Anomalies (Score &gt; 75)</div>
                 </div>
+                <div class="kpi-bottom" id="kpi-sub2-sub">
+                    <span>Privilege Escalation &amp; Exfiltration</span>
+                </div>
+            </div>
 
-                <!-- Card 6: Key Takeaways Narrative Card -->
-                <div class="studio-card card-takeaways" id="card-takeaways">
-                    <div class="card-header-clean">
-                        <div class="title-with-icon">
-                            <span class="takeaway-bulb">💡</span>
-                            <h3 class="card-title-text">Key Takeaways</h3>
-                        </div>
-                    </div>
-                    <div class="takeaways-content">
-                        <ul id="takeaways-list" class="takeaways-list">
-                            <!-- Populated dynamically with verified DuckDB narrative -->
-                        </ul>
-                        <button type="button" id="btn-card-followup" class="btn-card-followup">
-                            <span class="plus-sparkle">+</span>
-                            <span>Ask a follow-up question</span>
+            <!-- Card 4: Zero-Trust Governance Quality -->
+            <div class="kpi-glass-card border-emerald">
+                <div class="kpi-top">
+                    <span class="kpi-tag">DATA RESCUE &amp; GOVERNANCE</span>
+                    <span class="kpi-badge badge-emerald">GATE VERIFIED</span>
+                </div>
+                <div class="kpi-middle">
+                    <div class="kpi-big-number text-emerald" id="kpi-quality-val">98.6%</div>
+                    <div class="kpi-heading">Quality &amp; Invariant Score</div>
+                </div>
+                <div class="kpi-bottom text-emerald">
+                    <span>51/51 structural rules held in snapshot</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- MAIN TWO-COLUMN WORKSPACE                                       -->
+        <!-- =============================================================== -->
+        <div class="workspace-split">
+
+            <!-- ----------------------------------------------------------- -->
+            <!-- MAIN INTELLIGENCE STUDIO (LEFT - 68%)                       -->
+            <!-- ----------------------------------------------------------- -->
+            <main class="studio-main-card" id="pane-canvas">
+
+                <!-- Studio Navigation Bar -->
+                <div class="studio-nav-bar">
+                    <div class="studio-tabs">
+                        <button type="button" class="studio-tab-btn active" data-tab="telemetry" id="tab-telemetry">
+                            <span class="tab-glyph">📊</span>
+                            <span>Threat Telemetry &amp; AI Visuals</span>
+                        </button>
+
+                        <button type="button" class="studio-tab-btn" data-tab="grid" id="tab-grid">
+                            <span class="tab-glyph">🔍</span>
+                            <span>Zero-Trust Audit Log</span>
+                            <span class="tab-counter" id="grid-tab-count">2,800</span>
+                        </button>
+
+                        <button type="button" class="studio-tab-btn" data-tab="pipeline" id="tab-pipeline">
+                            <span class="tab-glyph">⚡</span>
+                            <span>Data Rescue Pipeline</span>
+                        </button>
+
+                        <button type="button" class="studio-tab-btn" data-tab="source" id="tab-source">
+                            <span class="tab-glyph">📄</span>
+                            <span>Raw Logs Inspector</span>
+                        </button>
+
+                        <button type="button" class="studio-tab-btn" data-tab="rules" id="tab-rules">
+                            <span class="tab-glyph">✓</span>
+                            <span>Security Invariants</span>
                         </button>
                     </div>
+
+                    <div class="studio-governance-badge" id="canvas-trust-indicator">
+                        <span class="gov-dot"></span>
+                        <span id="canvas-trust-text">GOVERNED SNAPSHOT</span>
+                    </div>
                 </div>
+
+                <!-- Studio Tab Views Container -->
+                <div class="studio-viewport">
+
+                    <!-- ======================================================= -->
+                    <!-- TAB 1: THREAT TELEMETRY & AI VISUALS                    -->
+                    <!-- ======================================================= -->
+                    <div class="view-panel view-telemetry active" id="view-telemetry">
+
+                        <!-- Active Analytical Query Glass Bar -->
+                        <div class="query-active-glass" id="query-context-banner">
+                            <div class="query-active-content">
+                                <span class="query-chip">ACTIVE QUERY</span>
+                                <span class="query-title" id="canvas-active-question">Show the trend of failed login attempts by department over the last 7 days</span>
+                            </div>
+                            <div class="engine-indicator-pill" id="canvas-active-engine">
+                                <span class="engine-pulse-dot"></span>
+                                <span>DUCKDB OLAP ENGINE [0.002s]</span>
+                            </div>
+                        </div>
+
+                        <!-- Anomaly Alert Strip (High Risk Spikes) -->
+                        <div class="threat-alert-box" id="anomaly-alert-strip">
+                            <span class="alert-icon-big">🚨</span>
+                            <div class="alert-content" id="anomaly-alert-details">
+                                <div class="alert-head">CRITICAL INSIDER THREAT DETECTED:</div>
+                                <div class="alert-body">Engineering and DevOps departments show a 340% surge in failed authentication attempts with concurrent privilege escalation signatures.</div>
+                            </div>
+                        </div>
+
+                        <!-- Visual Intelligence Dual Panel Grid -->
+                        <div class="visuals-container-grid">
+                            <!-- Primary Chart Panel (7-Day Trend or Category Breakdown) -->
+                            <div class="chart-glass-panel">
+                                <div class="panel-header-clean">
+                                    <div class="panel-title-group">
+                                        <span class="panel-glyph">📈</span>
+                                        <h3 class="panel-title-text" id="main-chart-title">7-Day Trend: Failed Login Attempts by Department</h3>
+                                    </div>
+                                    <span class="panel-tag tag-cyan">TIME-SERIES SPLINE</span>
+                                </div>
+                                <div class="chart-plot-area" id="plot-main-chart"></div>
+                            </div>
+
+                            <!-- Secondary Chart Panel (Threat Category Share Donut) -->
+                            <div class="chart-glass-panel">
+                                <div class="panel-header-clean">
+                                    <div class="panel-title-group">
+                                        <span class="panel-glyph">🎯</span>
+                                        <h3 class="panel-title-text" id="secondary-chart-title">Threat Category Distribution</h3>
+                                    </div>
+                                    <span class="panel-tag tag-crimson">PARETO SHARE</span>
+                                </div>
+                                <div class="chart-plot-area" id="plot-secondary-chart"></div>
+                            </div>
+                        </div>
+
+                        <!-- Deterministic AI Security Narrative Briefing -->
+                        <div class="briefing-glass-card">
+                            <div class="briefing-top">
+                                <div class="briefing-title-wrap">
+                                    <span class="briefing-glyph">💡</span>
+                                    <h4 class="briefing-headline">Deterministic Security Deductions</h4>
+                                </div>
+                                <span class="briefing-math-tag">Verified DuckDB Arithmetic</span>
+                            </div>
+                            <ul class="briefing-bullet-list" id="takeaways-list">
+                                <li><strong>Brute Force Attack</strong> is the top threat category accounting for <strong>2,414</strong> failed logins (65.0% of all authentication failures).</li>
+                                <li><strong>Engineering</strong> department experienced the highest attack volume with <strong>1,039</strong> failed login attempts across the observed window.</li>
+                                <li>Outbound data transfer velocity flagged <strong>3</strong> potential exfiltration anomalies with payload sizes exceeding 500MB.</li>
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <!-- ======================================================= -->
+                    <!-- TAB 2: ZERO-TRUST AUDIT LOG EXPLORER                    -->
+                    <!-- ======================================================= -->
+                    <div class="view-panel view-grid hidden" id="view-grid">
+                        <div class="grid-toolbar">
+                            <div class="grid-search-wrapper">
+                                <span class="search-symbol">🔍</span>
+                                <input type="text" class="grid-search-input" id="grid-search-input" placeholder="Search by User, IP, Department, Event ID, Threat Type...">
+                            </div>
+                            <div class="grid-record-stats" id="grid-stats-info">
+                                Showing 1-50 of 2,800 security events
+                            </div>
+                            <div class="grid-pagination-group">
+                                <button type="button" class="btn-paginate" id="btn-page-prev">← Prev</button>
+                                <span class="paginate-label" id="grid-page-indicator">Page 1 / 56</span>
+                                <button type="button" class="btn-paginate" id="btn-page-next">Next →</button>
+                            </div>
+                        </div>
+
+                        <div class="grid-scroll-box">
+                            <table class="zero-trust-table" id="ide-data-table">
+                                <thead id="ide-table-head"></thead>
+                                <tbody id="ide-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ======================================================= -->
+                    <!-- TAB 3: DATA RESCUE PIPELINE LEDGER                      -->
+                    <!-- ======================================================= -->
+                    <div class="view-panel view-pipeline hidden" id="view-pipeline">
+                        <div class="rescue-hero-card">
+                            <div class="rescue-head">
+                                <span class="rescue-tag">ENTERPRISE DATA RESCUE (TRACK 2)</span>
+                                <span class="rescue-pill">PIPELINE VERIFIED</span>
+                            </div>
+                            <h3 class="rescue-title">Zero-Trust Telemetry Cleaning &amp; Governance Ledger</h3>
+                            <p class="rescue-desc">Every messy firewall row, truncated IP address (e.g. 192.168.1.xxx), broken JSON session ID, and unstructured antivirus alert text was rescued, standardized, and validated through deterministic invariants before snapshot publishing.</p>
+                        </div>
+
+                        <div class="rescue-stages-grid">
+                            <div class="rescue-stage-card">
+                                <div class="stage-card-top">
+                                    <span class="stage-num">01</span>
+                                    <span class="stage-name">Data Rescue &amp; Ingest</span>
+                                    <span class="stage-badge-ok">✓ OK</span>
+                                </div>
+                                <p class="stage-desc">Sanitized 2,800 events: normalized truncated IPs, repaired JSON session tokens, converted sentinel nulls.</p>
+                                <div class="stage-stat">2,800 rows out · 0 rejected cells · 12.8s</div>
+                            </div>
+
+                            <div class="rescue-stage-card">
+                                <div class="stage-card-top">
+                                    <span class="stage-num">02</span>
+                                    <span class="stage-name">Rule Validation Gate</span>
+                                    <span class="stage-badge-ok">✓ PASS</span>
+                                </div>
+                                <p class="stage-desc">51/51 structural and semantic invariants evaluated against DuckDB tables with zero fatal violations.</p>
+                                <div class="stage-stat">51 rules held · 0 warnings · 1.9s</div>
+                            </div>
+
+                            <div class="rescue-stage-card">
+                                <div class="stage-card-top">
+                                    <span class="stage-num">03</span>
+                                    <span class="stage-name">Immutable Snapshot</span>
+                                    <span class="stage-badge-ok">✓ PUBLISHED</span>
+                                </div>
+                                <p class="stage-desc">Published versioned Parquet snapshot stamped with SHA256 integrity hash.</p>
+                                <div class="stage-stat">Snapshot 20260906T000311 · 1.3s</div>
+                            </div>
+
+                            <div class="rescue-stage-card">
+                                <div class="stage-card-top">
+                                    <span class="stage-num">04</span>
+                                    <span class="stage-name">Threat Data Dictionary</span>
+                                    <span class="stage-badge-ok">✓ 100%</span>
+                                </div>
+                                <p class="stage-desc">Generated comprehensive business description catalog for every fact and dimension column.</p>
+                                <div class="stage-stat">53 fields cataloged · 0.6s</div>
+                            </div>
+
+                            <div class="rescue-stage-card">
+                                <div class="stage-card-top">
+                                    <span class="stage-num">05</span>
+                                    <span class="stage-name">Drift &amp; Anomaly Monitor</span>
+                                    <span class="stage-badge-ok">✓ ACTIVE</span>
+                                </div>
+                                <p class="stage-desc">Live statistical outlier tracking with median absolute deviation (MAD) robust z-score gates.</p>
+                                <div class="stage-stat">0 schema drift alerts · 0.01s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ======================================================= -->
+                    <!-- TAB 4: RAW LOGS INSPECTOR                               -->
+                    <!-- ======================================================= -->
+                    <div class="view-panel view-source hidden" id="view-source">
+                        <div class="source-action-bar">
+                            <div class="source-info-group">
+                                <span class="source-icon">📄</span>
+                                <span class="source-path-text" id="source-file-path">data/sample_datasets/cybersecurity_threat_logs.csv</span>
+                                <span class="source-stat-text" id="source-file-size">485 KB</span>
+                                <span class="source-stat-text" id="source-file-lines">2,800 lines</span>
+                            </div>
+                            <button type="button" class="btn-cyber btn-action-trend" id="btn-copy-source">Copy Log Content</button>
+                        </div>
+                        <div class="source-pre-wrap">
+                            <pre class="source-code-pre" id="source-code-viewer"><code>Loading raw telemetry source logs...</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- ======================================================= -->
+                    <!-- TAB 5: SECURITY INVARIANTS                              -->
+                    <!-- ======================================================= -->
+                    <div class="view-panel view-rules hidden" id="view-rules">
+                        <div class="invariants-top-strip">
+                            <div class="inv-stat">
+                                <span class="inv-val" id="rules-total-count">51</span>
+                                <span class="inv-name">Total Invariants</span>
+                            </div>
+                            <div class="inv-stat text-emerald">
+                                <span class="inv-val" id="rules-pass-count">51</span>
+                                <span class="inv-name">Passed</span>
+                            </div>
+                            <div class="inv-stat text-crimson">
+                                <span class="inv-val" id="rules-fail-count">0</span>
+                                <span class="inv-name">Failed</span>
+                            </div>
+                            <div class="inv-stat text-amber">
+                                <span class="inv-val" id="rules-warn-count">0</span>
+                                <span class="inv-name">Warnings</span>
+                            </div>
+                            <div class="inv-verdict-box" id="rule-verdict-box">
+                                <span class="inv-verdict-tag">VERDICT: PASS</span>
+                                <span class="inv-verdict-sub">All zero-trust access and metric bounds verified.</span>
+                            </div>
+                        </div>
+
+                        <div class="invariants-table-wrap">
+                            <table class="zero-trust-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">Table</th>
+                                        <th style="width: 180px;">Security Policy Rule</th>
+                                        <th style="width: 100px;">Status</th>
+                                        <th style="width: 110px;">Checked Rows</th>
+                                        <th>Details / Violations</th>
+                                        <th>Governance Rationale</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rules-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+
+            <!-- ----------------------------------------------------------- -->
+            <!-- AI THREAT ANALYST ASSISTANT (RIGHT - 32%)                   -->
+            <!-- ----------------------------------------------------------- -->
+            <aside class="analyst-sidebar-card" id="pane-agent">
+                <div class="analyst-head-bar">
+                    <div class="analyst-brand">
+                        <span class="analyst-robot">🤖</span>
+                        <div class="analyst-titles">
+                            <span class="analyst-main-title">AI Threat Analyst</span>
+                            <span class="analyst-sub-title">Zero-Hallucination OLAP</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-clear-chat-round" id="btn-clear-chat" title="Clear Chat History">✕</button>
+                </div>
+
+                <!-- Chat Stream Message History -->
+                <div class="analyst-chat-stream" id="agent-stream-container">
+                    <div class="chat-message msg-agent">
+                        <div class="msg-meta-row">
+                            <span class="msg-sender">CIPHER THREAT ANALYST</span>
+                            <span class="msg-timestamp">ONLINE</span>
+                        </div>
+                        <div class="msg-bubble-box">
+                            <p>Command center active over <strong id="welcome-dataset-name">cybersecurity_threat_logs.csv</strong>. All telemetry is verified with deterministic DuckDB arithmetic.</p>
+                        </div>
+                        <!-- AST Plan Box -->
+                        <div class="ast-plan-container">
+                            <div class="plan-toggle-header" onclick="this.parentElement.classList.toggle('expanded')">
+                                <span class="plan-icon">⚙</span>
+                                <span class="plan-oneline-text">plan: 7day_failed_login_trend | dept: all | engine: DuckDB</span>
+                                <span class="plan-arrow">▾</span>
+                            </div>
+                            <div class="plan-code-pane">
+                                <pre><code>{
+  "engine": "DuckDB In-Memory OLAP",
+  "status": "ready",
+  "threat_model": "Track 2 Zero-Trust",
+  "catalog_grounded": true
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Suggested Threat Prompts -->
+                <div class="suggested-prompts-section">
+                    <span class="suggested-title">QUICK THREAT QUERIES:</span>
+                    <div class="suggested-chips-list" id="agent-suggestion-pills">
+                        <!-- Populated dynamically with Track 2 queries -->
+                    </div>
+                </div>
+
+                <!-- Prompt Input Bar -->
+                <form class="analyst-input-box" id="agent-input-form">
+                    <div class="input-glow-wrapper">
+                        <span class="input-arrow">&gt;</span>
+                        <input type="text" class="analyst-text-input" id="agent-text-input" placeholder="Ask a security question, e.g. Show trend of failed logins by department..." autocomplete="off" spellcheck="false">
+                        <button type="submit" class="btn-submit-arrow" id="btn-agent-send" title="Run Query">↵</button>
+                    </div>
+                </form>
+            </aside>
+
+        </div>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PERSISTENT BOTTOM PIPELINE STRIP                                    -->
+    <!-- =================================================================== -->
+    <footer class="bottom-pipeline-bar" id="ide-pipeline-strip">
+        <div class="pipeline-brand-chip">
+            <span class="brand-bolt">⚡</span>
+            <span>PIPELINE</span>
+        </div>
+
+        <div class="pipeline-stages-flow" id="strip-stages-ledger">
+            <div class="stage-pill stage-ok" data-stage="clean" id="stage-chip-clean" title="Inspect Data Rescue">
+                <span class="pill-dot"></span>
+                <span class="pill-title">rescue</span>
+                <span class="pill-mark">✓</span>
+                <span class="pill-meta" id="stage-clean-meta">2,800 events (12.8s)</span>
+            </div>
+
+            <span class="stage-sep">→</span>
+
+            <div class="stage-pill stage-ok" data-stage="validate" id="stage-chip-validate" title="Inspect Zero-Trust Validation">
+                <span class="pill-dot"></span>
+                <span class="pill-title">validate</span>
+                <span class="pill-mark">✓</span>
+                <span class="pill-meta" id="stage-validate-meta">51/51 rules held (1.9s)</span>
+            </div>
+
+            <span class="stage-sep">→</span>
+
+            <div class="stage-pill stage-ok" data-stage="snapshot" id="stage-chip-snapshot" title="Inspect Snapshot Manifest">
+                <span class="pill-dot"></span>
+                <span class="pill-title">snapshot</span>
+                <span class="pill-mark">✓</span>
+                <span class="pill-meta" id="stage-snapshot-meta">20260906T000311 (1.3s)</span>
+            </div>
+
+            <span class="stage-sep">→</span>
+
+            <div class="stage-pill stage-ok" data-stage="dictionary" id="stage-chip-dictionary" title="Inspect Threat Dictionary">
+                <span class="pill-dot"></span>
+                <span class="pill-title">dictionary</span>
+                <span class="pill-mark">✓</span>
+                <span class="pill-meta" id="stage-dict-meta">53 fields (0.6s)</span>
+            </div>
+
+            <span class="stage-sep">→</span>
+
+            <div class="stage-pill stage-ok" data-stage="monitor" id="stage-chip-monitor" title="Inspect Threat Drift">
+                <span class="pill-dot"></span>
+                <span class="pill-title">monitor</span>
+                <span class="pill-mark">✓</span>
+                <span class="pill-meta" id="stage-monitor-meta">OK 0 alerts (0.01s)</span>
             </div>
         </div>
 
-        <!-- Bottom Non-Intrusive Drawer Trigger Bar -->
-        <div class="studio-bottom-bar">
-            <button id="btn-open-table-drawer" class="btn-bottom-pill">
-                <span>Inspect Underlying Records & DuckDB Execution Plan</span>
-                <span class="chevron-up">▾</span>
-            </button>
-            <div id="bottom-followup-chips" class="bottom-followup-chips"></div>
+        <div class="pipeline-actions-right">
+            <span class="pipeline-verdict-pill" id="pipeline-verdict-tag">PIPELINE VERIFIED OK</span>
+            <button type="button" class="btn-pipeline-execute" id="btn-strip-execute" title="Run Pipeline">Run</button>
         </div>
-    </main>
+    </footer>
 
-    <!-- Slide-Up Drawer Overlay (Raw Table & AST Plan) -->
-    <div id="audit-drawer-overlay" class="audit-drawer-overlay hidden">
-        <div class="audit-sheet">
-            <div class="audit-header">
-                <div class="audit-title-group">
-                    <span class="audit-title">Underlying Tabular Records & Validated Query Plan</span>
-                    <span id="audit-rows-badge" class="audit-badge">47 records</span>
+    <!-- Stage Inspection Modal -->
+    <div class="modal-backdrop-blur hidden" id="stage-modal-backdrop">
+        <div class="modal-surface-card">
+            <div class="modal-card-top">
+                <div class="modal-header-title">
+                    <span class="modal-bolt" id="modal-stage-glyph">⚡</span>
+                    <span class="modal-main-title" id="modal-stage-title">Pipeline Stage Inspector: clean</span>
                 </div>
-                <button id="btn-close-audit" class="btn-close-circle">✕</button>
+                <button type="button" class="modal-close-icon" id="btn-modal-close">✕</button>
             </div>
-            <div class="audit-content-split">
-                <div class="audit-table-pane">
-                    <table class="audit-table">
-                        <thead id="audit-table-head"></thead>
-                        <tbody id="audit-table-body"></tbody>
-                    </table>
-                </div>
-                <div class="audit-plan-pane">
-                    <div class="plan-heading">Validated DuckDB Plan (Deterministic AST)</div>
-                    <pre id="audit-plan-json" class="audit-plan-json"></pre>
-                </div>
-            </div>
+            <div class="modal-body-scroll" id="modal-stage-content"></div>
         </div>
     </div>
 
-    <!-- Telemetry Drawer -->
-    <div id="telemetry-drawer-overlay" class="audit-drawer-overlay hidden">
-        <div class="audit-sheet telemetry-sheet">
-            <div class="audit-header">
-                <div class="audit-title-group">
-                    <span class="audit-title">Dataset Health & Discovered Schema</span>
-                    <span id="telemetry-score-badge" class="audit-badge badge-green">100% Quality</span>
-                </div>
-                <button id="btn-close-telemetry" class="btn-close-circle">✕</button>
-            </div>
-            <div class="telemetry-flex">
-                <div class="telemetry-pane">
-                    <h4>Discovered Measures (DuckDB Math)</h4>
-                    <div id="telemetry-measures-container" class="telemetry-list"></div>
-                </div>
-                <div class="telemetry-pane">
-                    <h4>Discovered Dimensions</h4>
-                    <div id="telemetry-dimensions-container" class="telemetry-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- Application Controller -->
     <script src="app.js"></script>
 </body>
 </html>
